@@ -1,0 +1,19 @@
+%token NUM ADD SUB MUL DIV
+%start Expr
+
+%%
+
+Expr : Expr OP1 Expr2 
+		 | Expr2
+;
+
+Expr2 : Expr2 OP2 Expr3
+			| Expr3
+;
+
+Expr3 : '(' Expr ')'
+			| NUM
+;
+
+OP1 : ADD | SUB ;
+OP2 : MUL | DIV ;
