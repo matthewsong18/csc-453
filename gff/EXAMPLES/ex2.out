@@ -1,6 +1,0 @@
-
-FIRST sets:
-  E:   '(' '-' number ident 
-
-FOLLOW sets:
-  E:   <EOF> '+' '-' '*' '/' ')' 
