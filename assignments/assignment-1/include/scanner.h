@@ -42,4 +42,39 @@ typedef enum {
   opNOT     /* ! : Op: logical-not */
 } Token;
 
+typedef struct TokenMatch {
+ const char *(*match)(const char *input);
+ const char *name;
+ int value;
+} TokenMatch;
+
+extern const TokenMatch M_UNDEF;     /* undefined */
+extern const TokenMatch M_ID;        /* identifier: e.g., x, abc, p_q_12 */
+extern const TokenMatch M_INTCON;    /* integer constant: e.g., 12345 */
+extern const TokenMatch M_LPAREN;    /* '(' : Left parenthesis */
+extern const TokenMatch M_RPAREN;    /* ')' : Right parenthesis */
+extern const TokenMatch M_LBRACE;    /* '{' : Left curly brace */
+extern const TokenMatch M_RBRACE;    /* '}' : Right curly brace */
+extern const TokenMatch M_COMMA;     /* ',' : Comma */
+extern const TokenMatch M_SEMI;      /*	;  : Semicolon */
+extern const TokenMatch M_kwINT;     /*	int */
+extern const TokenMatch M_kwIF;      /*	if */
+extern const TokenMatch M_kwELSE;    /*	else */
+extern const TokenMatch M_kwWHILE;   /*	while */
+extern const TokenMatch M_kwRETURN;  /*	return */
+extern const TokenMatch M_opASSG;    /*	= : Assignment */
+extern const TokenMatch M_opADD;     /*	+ : addition */
+extern const TokenMatch M_opSUB;     /*	– : subtraction */
+extern const TokenMatch M_opMUL;     /*	* : multiplication */
+extern const TokenMatch M_opDIV;     /*	/ : division */
+extern const TokenMatch M_opEQ;      /*	== : Op: equals */
+extern const TokenMatch M_opNE;      /*	!= : op: not-equals */
+extern const TokenMatch M_opGT;      /*	>  : Op: greater-than */
+extern const TokenMatch M_opGE;      /*	>= : Op: greater-or-equal */
+extern const TokenMatch M_opLT;      /*	<  : Op: less-than */
+extern const TokenMatch M_opLE;      /*	<= : Op: less-or-equal */
+extern const TokenMatch M_opAND;     /*	&& : Op: logical-and */
+extern const TokenMatch M_opOR;      /*	|| : Op: logical-or */
+extern const TokenMatch M_opNOT;     /* ! : Op: logical-not */
+
 #endif  /* __SCANNER_H__ */
