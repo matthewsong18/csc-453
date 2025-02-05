@@ -4,7 +4,7 @@
  * Purpose: The driver code for the scanner for the CSC 453 project
  */
 
-#include "../include/scanner.h"
+#include "scanner.h"
 #include <stdio.h>
 
 /*

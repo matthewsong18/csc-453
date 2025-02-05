@@ -1,4 +1,5 @@
-#include "../include/scanner.h"
+#include "scanner.h"
+#include <ctype.h>
 #include <stdio.h>
 
 char *lexeme;
@@ -7,7 +8,6 @@ int lval;
 void skip_whitespace_and_comments();
 static int is_whitespace(int character);
 static int handle_comment_start();
-static void skip_single_line_comment();
 static void skip_multi_line_comment();
 
 // Token registry (sorted by match priority)
@@ -55,14 +55,25 @@ int get_token() {
   // Skip any leading whitespace or comments
   skip_whitespace_and_comments();
 
-  // Read first character of potential token
-  buffer[0] = getchar();
-  if (buffer[0] == EOF) {
-    return 0; // End of input
-  }
+  int character = getchar();
+  if (character == EOF)
+    return -1;
 
-  // Initialize buffer with first character
-  buffer_pos = 1;
+  // Start filling buffer with first character
+  buffer_pos = 0;
+  buffer[buffer_pos++] = character;
+
+  // If it's a letter or number, read until we reach a non-identifier character
+  if (isalnum(character)) {
+    while (buffer_pos < 1023) {
+      int next = getchar();
+      if (!isalnum(next)) {
+        ungetc(next, stdin);
+        break;
+      }
+      buffer[buffer_pos++] = next;
+    }
+  }
   buffer[buffer_pos] = '\0';
 
   // Try to match against each token pattern
@@ -76,8 +87,10 @@ int get_token() {
     }
   }
 
-  // No match found, backtrack and return error
-  ungetc(buffer[0], stdin);
+  // Undefined
+  buffer_pos = 0;
+  buffer[buffer_pos++] = character; // Store only the first unknown character
+  buffer[buffer_pos] = '\0';        // Null-terminate the buffer
   return UNDEF;
 }
 
@@ -91,6 +104,8 @@ void skip_whitespace_and_comments() {
 
     if (character == '/' && handle_comment_start()) {
       continue;
+    } else if (character == '/') {
+      return;
     }
 
     ungetc(character, stdin);
@@ -106,11 +121,6 @@ static int is_whitespace(int character) {
 static int handle_comment_start() {
   int next_char = getchar();
 
-  if (next_char == '/') {
-    skip_single_line_comment();
-    return 1;
-  }
-
   if (next_char == '*') {
     skip_multi_line_comment();
     return 1;
@@ -119,12 +129,6 @@ static int handle_comment_start() {
   ungetc(next_char, stdin);
   ungetc('/', stdin);
   return 0;
-}
-
-static void skip_single_line_comment() {
-  int character;
-  while ((character = getchar()) != EOF && character != '\n') {
-  };
 }
 
 static void skip_multi_line_comment() {
