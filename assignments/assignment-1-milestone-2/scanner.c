@@ -5,19 +5,30 @@
 
 #define MAX_OP_LEN 3
 
+// Global lexer variables.
 char *lexeme;
 int lval;
 
-void skip_whitespace_and_comments();
-static char *build_token_candidate();
+// Function prototypes.
+void skip_whitespace_and_comments(void);
+static char *build_token_candidate(void);
+static const TokenMatch *find_matching_token(char *candidate, int candidate_len,
+                                             int *matched_length);
+static void push_back_extra_chars(const char *candidate, int from,
+                                  int candidate_len);
+
 static int is_whitespace(int character);
-static int handle_comment_start();
-static void skip_multi_line_comment();
+static int handle_comment_start(void);
+static void skip_multi_line_comment(void);
 
 // Token registry (sorted by match priority)
 static const TokenMatch *token_types[] = {
     // --- 1. Keywords (exact matches first) ---
-    &M_kwINT, &M_kwIF, &M_kwELSE, &M_kwWHILE, &M_kwRETURN,
+    &M_kwINT,
+    &M_kwIF,
+    &M_kwELSE,
+    &M_kwWHILE,
+    &M_kwRETURN,
 
     // --- 2. Multi-character operators ---
     &M_opEQ,  // ==
@@ -50,95 +61,170 @@ static const TokenMatch *token_types[] = {
     &M_ID,     // Identifiers
 
     // --- Terminator ---
-    NULL};
+    NULL,
+};
 
-int get_token() {
-  // Skip any leading whitespace or comments
+//
+// get_token()
+// 1. Skips leading whitespace/comments.
+// 2. Builds a candidate token string from input.
+// 3. Finds the longest valid match among the TokenMatch functions.
+// 4. Pushes back any extra characters that were read.
+// 5. Returns the token value (or UNDEF for an unknown token).
+//
+int get_token(void) {
   skip_whitespace_and_comments();
 
   char *candidate = build_token_candidate();
-  if (!candidate) // End-of-file reached
-    return -1;
+  if (!candidate)
+    return -1; // End-of-file reached
 
   int candidate_len = strlen(candidate);
   int matched_length = 0;
-  const TokenMatch *matched_token = NULL;
-
-  // Try candidate prefixes from the full length down to 1.
-  // (We want the longest accepted prefix.)
-  for (int len = candidate_len; len >= 1; len--) {
-    char saved = candidate[len]; // Save the character at the cut point.
-    candidate[len] = '\0';       // Temporarily terminate the candidate.
-
-    // Try each token in the registry.
-    for (const TokenMatch **token = token_types; *token; token++) {
-      const char *match_result = (*token)->match(candidate);
-      // We consider it a match if the token's match function returns a pointer
-      // that indicates it consumed exactly this prefix (i.e. candidate + len).
-      if (match_result && (match_result - candidate) == len) {
-        matched_length = len;
-        matched_token = *token;
-        break;
-      }
-    }
-    candidate[len] = saved; // Restore the original character.
-
-    if (matched_token) {
-      // We found a valid token with this prefix; stop checking shorter
-      // prefixes.
-      break;
-    }
-  }
+  const TokenMatch *matched_token =
+      find_matching_token(candidate, candidate_len, &matched_length);
 
   if (matched_token) {
-    // If our candidate read extra characters beyond what the token consumed,
-    // push them back in reverse order so that later calls to get_token() will
-    // see them.
-    for (int i = candidate_len - 1; i >= matched_length; i--) {
-      ungetc(candidate[i], stdin);
-    }
-    // Terminate the candidate at the matched length.
+    push_back_extra_chars(candidate, matched_length, candidate_len);
     candidate[matched_length] = '\0';
     lexeme = candidate;
     lval = matched_token->value;
     return matched_token->value;
   } else {
-    // No token matched. Consume only the first character.
-    // Push back any extra characters.
-    for (int i = candidate_len - 1; i >= 1; i--) {
-      ungetc(candidate[i], stdin);
-    }
-    // Set the candidate to just the first character.
+    // No valid token was found; consume only the first character.
+    push_back_extra_chars(candidate, 1, candidate_len);
     candidate[1] = '\0';
     return UNDEF;
   }
 }
 
-void skip_whitespace_and_comments() {
+//
+// find_matching_token()
+// Try candidate prefixes from the full length down to 1 and return the
+// first (i.e. longest) match found. The matched length is stored in
+// *matched_length.
+//
+static const TokenMatch *find_matching_token(char *candidate, int candidate_len,
+                                             int *matched_length) {
+  const TokenMatch *found = NULL;
+  for (int len = candidate_len; len >= 1; len--) {
+    char saved =
+        candidate[len];    // Temporarily save the character at position len.
+    candidate[len] = '\0'; // Temporarily terminate the candidate here.
+
+    for (const TokenMatch **token = token_types; *token; token++) {
+      const char *result = (*token)->match(candidate);
+      if (result && (result - candidate) == len) {
+        *matched_length = len;
+        found = *token;
+        break;
+      }
+    }
+    candidate[len] = saved; // Restore the candidate.
+
+    if (found)
+      break;
+  }
+  return found;
+}
+
+//
+// push_back_extra_chars()
+// Pushes back characters from candidate[from] up through
+// candidate[candidate_len-1] into the input stream so that they are available
+// for future tokenization.
+//
+static void push_back_extra_chars(const char *candidate, int from,
+                                  int candidate_len) {
+  for (int i = candidate_len - 1; i >= from; i--) {
+    ungetc(candidate[i], stdin);
+  }
+}
+
+//
+// build_token_candidate()
+// Reads input and builds a candidate string.
+// - For alphanumeric characters, reads until a non-alnum is encountered.
+// - For other characters, attempts to read up to MAX_OP_LEN characters
+//   if they belong to a set of operator characters.
+//
+static char *build_token_candidate(void) {
+  static char buffer[1024];
+  int pos = 0;
+
+  int ch = getchar();
+  if (ch == EOF)
+    return NULL;
+  buffer[pos++] = ch;
+
+  if (isalnum(ch)) {
+    // Read full identifier or number.
+    while (pos < 1023) {
+      int next = getchar();
+      if (next == EOF)
+        break;
+      if (!isalnum(next)) {
+        ungetc(next, stdin);
+        break;
+      }
+      buffer[pos++] = next;
+    }
+  } else {
+    // For non-alphanumerics, attempt to read a multi-character operator.
+    const char *op_chars = "=!<>|&+-*/%";
+    if (strchr(op_chars, ch)) {
+      for (int i = 1; i < MAX_OP_LEN && pos < 1023; i++) {
+        int next = getchar();
+        if (next == EOF)
+          break;
+        if (isspace(next) || isalnum(next) || !strchr(op_chars, next)) {
+          ungetc(next, stdin);
+          break;
+        }
+        buffer[pos++] = next;
+      }
+    }
+    // For punctuation (like '(' or ')'), we simply keep the single character.
+  }
+  buffer[pos] = '\0';
+  return buffer;
+}
+
+//
+// skip_whitespace_and_comments()
+// Consumes all whitespace and comments from the input before the next token.
+//
+void skip_whitespace_and_comments(void) {
   int character;
-
   while ((character = getchar()) != EOF) {
-    if (is_whitespace(character)) {
+    if (is_whitespace(character))
       continue;
-    }
-
-    if (character == '/' && handle_comment_start()) {
+    if (character == '/' && handle_comment_start())
       continue;
-    } else if (character == '/') {
+    else if (character == '/')
       return;
-    }
 
     ungetc(character, stdin);
     return;
   }
 }
 
+//
+// is_whitespace()
+// Returns nonzero if the character is a whitespace character.
+//
 static int is_whitespace(int character) {
   return character == ' ' || character == '\t' || character == '\n' ||
          character == '\r';
 }
 
-static int handle_comment_start() {
+//
+// handle_comment_start()
+// Checks if the '/' character starts a comment. If the next character is '*',
+// it skips the multi-line comment and returns 1; otherwise, it pushes the
+// character(s) back and returns 0.
+//
+static int handle_comment_start(void) {
   int next_char = getchar();
 
   if (next_char == '*') {
@@ -151,65 +237,17 @@ static int handle_comment_start() {
   return 0;
 }
 
-static void skip_multi_line_comment() {
-  int current = 0;
+//
+// skip_multi_line_comment()
+// Consumes characters until the closing '*/' is found.
+//
+static void skip_multi_line_comment(void) {
   int previous = 0;
+  int current = 0;
 
   while ((current = getchar()) != EOF) {
-    if (previous == '*' && current == '/') {
+    if (previous == '*' && current == '/')
       return;
-    }
     previous = current;
   }
-}
-
-static char *build_token_candidate(void) {
-  // Use a static buffer for simplicity.
-  static char buffer[1024];
-  int pos = 0;
-
-  int ch = getchar();
-  if (ch == EOF)
-    return NULL; // End of input
-
-  buffer[pos++] = ch;
-
-  // If the character is alphanumeric, read until a non-alphanumeric is found.
-  if (isalnum(ch)) {
-    while (pos < 1023) {
-      int next = getchar();
-      if (next == EOF)
-        break;
-      if (!isalnum(next)) {
-        ungetc(next, stdin);
-        break;
-      }
-      buffer[pos++] = next;
-    }
-  } else {
-    // For non-alphanumeric characters, we want to allow the possibility
-    // of a multi-character token.
-    const char *op_chars = "=!<>|&+-*/%";
-
-    // If the first character is in our operator set, try to read up to
-    // MAX_OP_LEN characters.
-    if (strchr(op_chars, ch)) {
-      for (int i = 1; i < MAX_OP_LEN && pos < 1023; i++) {
-        int next = getchar();
-        if (next == EOF)
-          break;
-        // Stop if we hit whitespace, an alphanumeric character, or a character
-        // that is not in our operator set.
-        if (isspace(next) || isalnum(next) || !strchr(op_chars, next)) {
-          ungetc(next, stdin);
-          break;
-        }
-        buffer[pos++] = next;
-      }
-    }
-    // Otherwise, for punctuation like '(' or ')', we simply return that single
-    // character.
-  }
-  buffer[pos] = '\0';
-  return buffer;
 }
