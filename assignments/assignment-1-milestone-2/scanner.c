@@ -254,4 +254,5 @@ static void skip_multi_line_comment(void) {
 
 int parse() {
   // TODO
+  return -1;
 }
