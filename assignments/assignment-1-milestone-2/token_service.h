@@ -17,14 +17,19 @@ typedef enum {
 
 typedef struct {
   TokenType type;
-  const char *lexeme; // For simplicity, not used in this skeleton.
-  int line;           // Line number (for error reporting)
+  int line; // Line number (for error reporting)
 } TokenI;
 
 // Scanner function declarations.
 TokenI getNextToken(void);
 void advanceToken(void);
 bool match(TokenType expected);
+
+// Scanner function.
+extern int get_token(void);
+
+// Global line number variable.
+extern int currentLine;
 
 // Global current token.
 extern TokenI currentToken;

@@ -64,6 +64,8 @@ static const TokenMatch *token_types[] = {
     NULL,
 };
 
+int currentLine = 0;
+
 //
 // get_token()
 // 1. Skips leading whitespace/comments.
@@ -77,7 +79,7 @@ int get_token(void) {
 
   char *candidate = build_token_candidate();
   if (!candidate)
-    return -1; // End-of-file reached
+    return EOF; // End-of-file reached
 
   int candidate_len = strlen(candidate);
   int matched_length = 0;
@@ -155,6 +157,10 @@ static char *build_token_candidate(void) {
   int ch = getchar();
   if (ch == EOF)
     return NULL;
+
+  if (ch == '\n')
+    currentLine++;
+
   buffer[pos++] = ch;
 
   if (isalnum(ch)) {
@@ -197,6 +203,9 @@ static char *build_token_candidate(void) {
 void skip_whitespace_and_comments(void) {
   int character;
   while ((character = getchar()) != EOF) {
+    if (character == '\n')
+      currentLine++;
+
     if (is_whitespace(character))
       continue;
     if (character == '/' && handle_comment_start())
@@ -250,9 +259,4 @@ static void skip_multi_line_comment(void) {
       return;
     previous = current;
   }
-}
-
-int parse() {
-  // TODO
-  return -1;
 }
