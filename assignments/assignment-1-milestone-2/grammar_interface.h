@@ -3,10 +3,8 @@
 
 #include "./token_service.h"
 
-// Forward declaration of GrammarRule.
 typedef struct GrammarRule GrammarRule;
 
-// GrammarRule "interface" structure.
 struct GrammarRule {
     // Function pointers
     bool (*isFirst)(GrammarRule *rule, TokenI token);
