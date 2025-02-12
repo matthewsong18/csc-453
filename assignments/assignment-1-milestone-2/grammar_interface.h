@@ -6,19 +6,18 @@
 // Forward declaration of GrammarRule.
 typedef struct GrammarRule GrammarRule;
 
-// Function pointer type for a parse function.
-typedef bool (*ParseFunc)(GrammarRule *rule);
-
 // GrammarRule "interface" structure.
 struct GrammarRule {
+    // Function pointers
     bool (*isFirst)(GrammarRule *rule, TokenI token);
     bool (*isFollow)(GrammarRule *rule, TokenI token);
-    ParseFunc parse;  // Pointer to a parse function (if desired).
+    bool (*parse)(GrammarRule *rule);
+    // Data: the arrays for FIRST and FOLLOW sets and their counts.
     TokenType *firstSet;
     int firstCount;
     TokenType *followSet;
     int followCount;
-    const char *name; // For debugging purposes.
+    const char *name; // Rule name
 };
 
 // Function prototypes for FIRST/FOLLOW checking.

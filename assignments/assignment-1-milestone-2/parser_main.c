@@ -2,7 +2,7 @@
 #include "token_service.h"
 #include <stdio.h>
 
-int main(void) {
+int parse(void) {
   advanceToken();
 
   if (parse_prog()) {
