@@ -1,22 +1,20 @@
 CC = gcc
-CFLAGS = -Wall -I include
+CFLAGS = -Wall
 
-SRCS = complex.c keywords.c operators.c \
-       punctuation.c scanner.c scanner-driver.c
+compile: parser_main.o token_service.o grammar_interface.o parser_service.o
+	$(CC) $(CFLAGS) -o compile parser_main.o token_service.o grammar_interface.o parser_service.o
 
-COMPILE_SRC = complex.c keywords.c operators.c punctuation.c scanner.c driver.c
+parser_main.o: parser_main.c driver.c token_service.h parser_service.h grammar_interface.h
+	$(CC) $(CFLAGS) -c parser_main.c
 
-target:
-	make compile
+token_service.o: token_service.c token_service.h
+	$(CC) $(CFLAGS) -c token_service.c
 
-scanner: $(SRCS)
-	$(CC) $(CFLAGS) $(SRCS) -o scanner
+grammar_interface.o: grammar_interface.c grammar_interface.h token_service.h
+	$(CC) $(CFLAGS) -c grammar_interface.c
 
-compile: $(COMPILE_SRC)
-	$(CC) $(CFLAGS) $(COMPILE_SRC) -o compile
+parser_service.o: parser_service.c parser_service.h token_service.h grammar_interface.h
+	$(CC) $(CFLAGS) -c parser_service.c
 
 clean:
-	rm -f scanner
-	rm -f compile
-
-.PHONY: clean
+	rm -f *.o compile
