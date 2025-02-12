@@ -2,4 +2,8 @@
 
 ## Tasks
 
-- TBD
+- Figure out grammar
+- Make module for parsing
+- Patch scanner into parser
+- Implement parsing functions
+- Error handling

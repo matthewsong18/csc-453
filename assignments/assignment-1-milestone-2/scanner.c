@@ -251,3 +251,7 @@ static void skip_multi_line_comment(void) {
     previous = current;
   }
 }
+
+int parse() {
+  // TODO
+}
