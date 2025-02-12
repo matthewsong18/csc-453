@@ -64,7 +64,7 @@ static const TokenMatch *token_types[] = {
     NULL,
 };
 
-int currentLine = 0;
+int currentLine = 1;
 
 //
 // get_token()

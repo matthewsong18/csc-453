@@ -12,7 +12,7 @@ bool parse_prog(void) {
       return false;
   }
   if (currentToken.type != TOKEN_EOF) {
-    fprintf(stderr, "ERROR: Expected EOF at end of program at line %d\n",
+    fprintf(stderr, "ERROR: LINE %d: unexpected token after program end\n",
             currentToken.line);
     return false;
   }
@@ -39,8 +39,8 @@ bool parse_func_defn(void) {
 
   // Check FIRST condition.
   if (!funcDefnRule.isFirst(&funcDefnRule, currentToken)) {
-    fprintf(stderr, "ERROR: func_defn: unexpected token %d at line %d\n",
-            currentToken.type, currentToken.line);
+    fprintf(stderr, "ERROR: LINE %d: unexpected token in func_defn\n",
+            currentToken.line);
     return false;
   }
 

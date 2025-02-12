@@ -30,9 +30,6 @@ TokenI getNextToken(void) {
     token.type = TOKEN_SEMI;
   else if (tok == UNDEF)
     token.type = TOKEN_UNDEF;
-  else {
-    perror("ERROR: Invalid token");
-  }
 
   token.line = currentLine;
   return token;
@@ -48,8 +45,7 @@ bool match(TokenType expected) {
     advanceToken();
     return true;
   } else {
-    fprintf(stderr, "ERROR: Expected token %d at line %d\n", expected,
-            currentToken.line);
+    fprintf(stderr, "ERROR: LINE %d: unexpected token\n", currentToken.line);
     return false;
   }
 }
