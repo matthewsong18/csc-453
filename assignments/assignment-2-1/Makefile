@@ -3,13 +3,13 @@ CFLAGS = -Wall
 
 all: compile
 
-compile: driver.o parser_main.o token_service.o grammar_interface.o parser_service.o scanner.o complex.o keywords.o operators.o punctuation.o
-	$(CC) $(CFLAGS) -o compile driver.o parser_main.o token_service.o grammar_interface.o parser_service.o scanner.o complex.o keywords.o operators.o punctuation.o
+compile: driver.o parser_main.o token_service.o grammar_interface.o parser_service.o symbol_table.o scanner.o complex.o keywords.o operators.o punctuation.o
+	$(CC) $(CFLAGS) -o compile driver.o parser_main.o token_service.o grammar_interface.o parser_service.o symbol_table.o scanner.o complex.o keywords.o operators.o punctuation.o
 
-driver.o: driver.c token_service.h parser_service.h grammar_interface.h
+driver.o: driver.c
 	$(CC) $(CFLAGS) -c driver.c
 
-parser_main.o: parser_main.c token_service.h parser_service.h
+parser_main.o: parser_main.c token_service.h parser_service.h symbol_table.h
 	$(CC) $(CFLAGS) -c parser_main.c
 
 scanner.o: scanner.c scanner.h
@@ -33,8 +33,11 @@ token_service.o: token_service.c token_service.h scanner.h
 grammar_interface.o: grammar_interface.c grammar_interface.h token_service.h
 	$(CC) $(CFLAGS) -c grammar_interface.c
 
-parser_service.o: parser_service.c parser_service.h token_service.h grammar_interface.h
+parser_service.o: parser_service.c parser_service.h token_service.h symbol_table.h
 	$(CC) $(CFLAGS) -c parser_service.c
+
+symbol_table.o: symbol_table.c symbol_table.h
+	$(CC) $(CFLAGS) -c symbol_table.c
 
 clean:
 	rm -f *.o compile

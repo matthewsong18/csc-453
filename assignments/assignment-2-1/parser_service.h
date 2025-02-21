@@ -3,6 +3,10 @@
 
 #include <stdbool.h>
 
+// External variables provided by other modules.
+extern int chk_decl_flag;
+extern char *lexeme; // Holds the lexeme for the last matched identifier.
+
 // Function prototypes for parser functions.
 bool parse_prog(void);
 bool parse_decl_or_func(void);
@@ -19,5 +23,11 @@ bool parse_opt_stmt_list(void);
 bool parse_stmt(void);
 bool parse_fn_call(void);
 bool parse_opt_expr_list(void);
+char *captureID(void);
+bool chooseDeclBranch(char *idLex);
+bool parseFunctionDeclaration(char *idLex);
+bool parseVariableDeclaration(char *idLex);
+bool semanticCheckVar(const char *idLex);
+bool semanticCheckFunc(const char *idLex);
 
 #endif
