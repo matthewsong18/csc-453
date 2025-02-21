@@ -1,4 +1,4 @@
-%token id kwINT LPAREN RPAREN LBRACE RBRACE SEMI COMMA
+%token ID kwINT LPAREN RPAREN LBRACE RBRACE SEMI COMMA
 %start prog
 %%
 
@@ -17,7 +17,7 @@ id_list : ID
 type : kwINT
     ;
 
-func_defn : type id LPAREN opt_formals RPAREN LBRACE opt_var_decls opt_stmt_list RBRACE
+func_defn : type ID LPAREN opt_formals RPAREN LBRACE opt_var_decls opt_stmt_list RBRACE
     ;
 
 opt_formals : /* epsilon */
@@ -39,7 +39,7 @@ opt_stmt_list : stmt opt_stmt_list
 stmt : fn_call
     ;
 
-fn_call : id LPAREN opt_expr_list RPAREN SEMI
+fn_call : ID LPAREN opt_expr_list RPAREN SEMI
     ;
 
 opt_expr_list : /* epsilon */
