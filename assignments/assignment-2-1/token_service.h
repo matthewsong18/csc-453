@@ -12,7 +12,8 @@ typedef enum {
   TOKEN_RBRACE,
   TOKEN_SEMI,
   TOKEN_EOF,
-  TOKEN_UNDEF
+  TOKEN_UNDEF,
+  TOKEN_COMMA,
 } TokenType;
 
 typedef struct {

@@ -30,6 +30,8 @@ TokenI getNextToken(void) {
     token.type = TOKEN_SEMI;
   else if (tok == UNDEF)
     token.type = TOKEN_UNDEF;
+  else if (tok == COMMA)
+    token.type = TOKEN_COMMA;
 
   token.line = currentLine;
   return token;
