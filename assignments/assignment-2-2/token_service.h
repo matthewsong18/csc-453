@@ -37,6 +37,7 @@ typedef struct {
 TokenI getNextToken(void);
 void advanceToken(void);
 bool match(TokenType expected);
+TokenI peekToken(void);
 
 // Scanner function.
 extern int get_token(void);

@@ -6,6 +6,9 @@
 // Global current token.
 TokenI currentToken;
 
+static TokenI peekedToken;
+static bool hasPeekedToken = false;
+
 // Call scanner
 TokenI getNextToken(void) {
   int tok = get_token();
@@ -45,27 +48,37 @@ TokenI getNextToken(void) {
     break;
   case kwWHILE:
     token.type = TOKEN_KWWHILE;
+    break;
   case kwIF:
     token.type = TOKEN_KWIF;
+    break;
   case kwRETURN:
     token.type = TOKEN_KWRETURN;
+    break;
   case opASSG:
     token.type = TOKEN_OPASSG;
+    break;
   case INTCON:
     token.type = TOKEN_INTCON;
+    break;
   case opEQ:
     token.type = TOKEN_OPEQ;
+    break;
   case opNE:
     token.type = TOKEN_OPNE;
+    break;
   case opLE:
     token.type = TOKEN_OPLE;
+    break;
   case opLT:
     token.type = TOKEN_OPLT;
+    break;
   case opGE:
     token.type = TOKEN_OPGE;
+    break;
   case opGT:
     token.type = TOKEN_OPGT;
-
+    break;
   default:
     token.type = TOKEN_UNDEF;
     break;
@@ -73,8 +86,23 @@ TokenI getNextToken(void) {
   return token;
 }
 
+TokenI peekToken(void) {
+  if (!hasPeekedToken) {
+    peekedToken = getNextToken();
+    hasPeekedToken = true;
+  }
+  return peekedToken;
+}
+
 // Advances to the next token.
-void advanceToken(void) { currentToken = getNextToken(); }
+void advanceToken(void) {
+  if (hasPeekedToken) {
+    currentToken = peekedToken;
+    hasPeekedToken = false;
+  } else {
+    currentToken = getNextToken();
+  }
+}
 
 // Checks that the current token matches the expected type; if so, advances.
 // Otherwise, prints an error and returns false.
