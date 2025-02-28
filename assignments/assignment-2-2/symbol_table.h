@@ -21,6 +21,7 @@ extern Scope *globalScope;
 extern Scope *currentScope;
 
 Symbol *lookupSymbol(const char *name, Scope *scope);
+Symbol *lookupSymbolInScope(const char *name, Scope *scope);
 bool addSymbol(const char *name, Scope *scope, const char *type,
                bool isFunction);
 void pushScope(void);

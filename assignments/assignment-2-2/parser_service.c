@@ -205,22 +205,54 @@ bool parse_opt_formals(void) {
 bool parse_formals(void) {
   if (!parse_type())
     return false;
-  if (!match(TOKEN_ID)) {
-    fprintf(stderr, "ERROR: LINE %d: expected identifier in formals\n",
-            currentToken.line);
+
+  // Capture the parameter name
+  char *paramName = captureID();
+  if (!paramName)
     return false;
+
+  // Add parameter to current scope
+  if (chk_decl_flag) {
+    if (lookupSymbol(paramName, currentScope)) {
+      fprintf(stderr, "ERROR: LINE %d: duplicate parameter '%s'\n",
+              currentToken.line, paramName);
+      free(paramName);
+      return false;
+    }
+    if (!addSymbol(paramName, currentScope, currentType,
+                   false)) { // false because it's a variable
+      free(paramName);
+      return false;
+    }
   }
+  free(paramName);
+
   while (currentToken.type == TOKEN_COMMA) {
     if (!match(TOKEN_COMMA))
       return false;
     if (!parse_type())
       return false;
-    if (!match(TOKEN_ID)) {
-      fprintf(stderr,
-              "ERROR: LINE %d: expected identifier after comma in formals\n",
-              currentToken.line);
+
+    // Capture the parameter name
+    paramName = captureID();
+    if (!paramName)
       return false;
+
+    // Add parameter to current scope
+    if (chk_decl_flag) {
+      if (lookupSymbol(paramName, currentScope)) {
+        fprintf(stderr, "ERROR: LINE %d: duplicate parameter '%s'\n",
+                currentToken.line, paramName);
+        free(paramName);
+        return false;
+      }
+      if (!addSymbol(paramName, currentScope, currentType,
+                     false)) { // false because it's a variable
+        free(paramName);
+        return false;
+      }
     }
+    free(paramName);
   }
   return true;
 }
@@ -259,24 +291,39 @@ bool parse_fn_call(void) {
 
   // Check if function exists and is actually a function
   if (chk_decl_flag) {
-    Symbol *symbol = lookupSymbol(funcName, globalScope);
-    if (!symbol) {
-      fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
-              currentToken.line, funcName);
-      free(funcName);
-      return false;
-    }
-    if (!symbol->isFunction) {
-      fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
-              currentToken.line, funcName);
-      free(funcName);
-      return false;
+    // First check if there's a local variable with this name
+    Symbol *localSymbol = lookupSymbolInScope(funcName, currentScope);
+
+    if (localSymbol) {
+      // If there's a local symbol with this name and we're trying to call it
+      // as a function, that's an error
+      if (!localSymbol->isFunction) {
+        fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
+                currentToken.line, funcName);
+        free(funcName);
+        return false;
+      }
+    } else {
+      // Check global scope for the function
+      Symbol *globalSymbol = lookupSymbol(funcName, globalScope);
+      if (!globalSymbol) {
+        fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
+                currentToken.line, funcName);
+        free(funcName);
+        return false;
+      }
+      if (!globalSymbol->isFunction) {
+        fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
+                currentToken.line, funcName);
+        free(funcName);
+        return false;
+      }
     }
   }
 
   free(funcName);
 
-  // Syntax checking
+  // Now proceed with syntax checking
   if (!match(TOKEN_ID))
     return false;
   if (!match(TOKEN_LPAREN))
