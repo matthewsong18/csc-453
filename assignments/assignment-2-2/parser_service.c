@@ -40,7 +40,7 @@ char *captureID(void) {
     fprintf(stderr, "ERROR: LINE %d: expected identifier\n", currentToken.line);
     return NULL;
   }
-  char *idLex = strdup(lexeme);
+  char *idLex = strdup(currentToken.lexeme);
   if (!idLex) {
     fprintf(stderr, "ERROR: memory allocation failure\n");
     return NULL;
@@ -146,7 +146,7 @@ bool parse_id_list(void) {
     }
 
     // Get the lexeme before advancing
-    char *idLex = strdup(lexeme);
+    char *idLex = strdup(currentToken.lexeme);
     if (!idLex) {
       fprintf(stderr, "ERROR: memory allocation failure\n");
       return false;
@@ -356,35 +356,34 @@ bool parse_while_stmt(void) {
   return true;
 }
 bool parse_if_stmt(void) {
-  // printf("Debug: In parse_if_stmt - Token type: %d\n", currentToken.type);
-  // grammar rules
   if (!match(TOKEN_KWIF)) {
     error("Failed to match TOKEN_KWIF");
     return false;
   }
   if (!match(TOKEN_LPAREN)) {
-    error("Failed to parse if");
+    error("Failed to parse ( in if");
     return false;
   }
   if (!parse_bool_exp()) {
-    error("Failed to parse if");
+    error("Failed to parse bool exp in if");
     return false;
   }
   if (!match(TOKEN_RPAREN)) {
-    error("Failed to parse if");
+    error("Failed to parse ) in if");
     return false;
   }
   if (!parse_stmt()) {
-    error("Failed to parse if");
+    error("Failed to parse stmt in if");
     return false;
   }
 
-  // if (match(TOKEN_KWELSE)) {
-  //   if (!parse_stmt()) {
-  //   error("Failed to parse if");
-  //     return false;
-  //   }
-  // }
+  if (currentToken.type == TOKEN_KWELSE) {
+    advanceToken();
+    if (!parse_stmt()) {
+      error("Failed to parse else clause in if statement");
+      return false;
+    }
+  }
 
   return true;
 }
@@ -466,31 +465,41 @@ bool parse_fn_call(void) {
 
   advanceToken();
 
-  if (!match(TOKEN_LPAREN))
+  if (!match(TOKEN_LPAREN)) {
+    error("Failed ( in fn call");
     return false;
-  if (!parse_opt_expr_list())
+  }
+  if (!parse_opt_expr_list()) {
+    error("Failed opt expr list in fn call");
     return false;
-  if (!match(TOKEN_RPAREN))
+  }
+  if (!match(TOKEN_RPAREN)) {
+    error("Failed ) in fn call");
     return false;
+  }
   return true;
 }
 
 bool parse_opt_expr_list(void) {
   if (currentToken.type == TOKEN_ID || currentToken.type == TOKEN_INTCON) {
-    advanceToken();
-    return parse_expr_list();
+    if (!parse_expr_list()) {
+      error("Failed expr list in opt expr list");
+      return false;
+    }
   }
   return true;
 }
 
 bool parse_expr_list(void) {
   if (!parse_arith_exp()) {
+    error("Failed arith in expr list");
     return false;
   }
 
   if (currentToken.type == TOKEN_COMMA) {
     advanceToken();
     if (!parse_expr_list()) {
+      error("Failed expr list in expr list");
       return false;
     }
   }
@@ -500,12 +509,15 @@ bool parse_expr_list(void) {
 
 bool parse_bool_exp(void) {
   if (!parse_arith_exp()) {
+    error("Failed arith in bool exp");
     return false;
   }
   if (!parse_relop()) {
+    error("Failed relop in bool exp");
     return false;
   }
   if (!parse_arith_exp()) {
+    error("Failed arith in bool exp");
     return false;
   }
   return true;
@@ -514,6 +526,7 @@ bool parse_bool_exp(void) {
 bool parse_arith_exp(void) {
   if (currentToken.type != TOKEN_ID && currentToken.type != TOKEN_INTCON) {
     error("expected ID or INTCON");
+    fprintf(stderr, "%d\n", currentToken.type);
     return false;
   }
   advanceToken();
