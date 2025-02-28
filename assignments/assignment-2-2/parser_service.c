@@ -289,10 +289,119 @@ bool parse_opt_stmt_list(void) {
 }
 
 bool parse_stmt(void) {
-  if (!parse_fn_call())
+  switch (currentToken.type) {
+  case TOKEN_ID: {
+    advanceToken();
+    // Lookahead: if next token is LPAREN then fn_call, else assg_stmt.
+    if (currentToken.type == TOKEN_LPAREN) {
+      return parse_fn_call();
+    } else {
+      return parse_assg_stmt();
+    }
+  }
+  case TOKEN_KWWHILE:
+    advanceToken();
+    return parse_while_stmt();
+  case TOKEN_KWIF:
+    printf("Got here\n");
+    fflush(stdout);
+    advanceToken();
+    return parse_if_stmt();
+  case TOKEN_KWRETURN:
+    advanceToken();
+    return parse_return_stmt();
+  case TOKEN_LBRACE: {
+    if (!match(TOKEN_LBRACE))
+      return false;
+    if (!parse_opt_stmt_list())
+      return false;
+    return match(TOKEN_RBRACE);
+  }
+  case TOKEN_SEMI:
+    return match(TOKEN_SEMI);
+  default:
+    fprintf(stderr, "ERROR: LINE %d: invalid statement\n", currentToken.line);
     return false;
-  if (!match(TOKEN_SEMI))
+  }
+}
+
+bool parse_while_stmt(void) {
+  // Grammar rules
+  if (!match(TOKEN_KWWHILE)) {
     return false;
+  }
+  if (!match(TOKEN_LPAREN)) {
+    return false;
+  }
+  if (!parse_bool_exp()) {
+    return false;
+  }
+  if (!match(TOKEN_RPAREN)) {
+    return false;
+  }
+  if (!parse_stmt()) {
+    return false;
+  }
+  return true;
+}
+bool parse_if_stmt(void) {
+  // grammar rules
+  if (!match(TOKEN_KWIF)) {
+    return false;
+  }
+  if (!match(TOKEN_LPAREN)) {
+    return false;
+  }
+  if (!parse_bool_exp()) {
+    return false;
+  }
+  if (!match(TOKEN_RPAREN)) {
+    return false;
+  }
+  if (!parse_stmt()) {
+    return false;
+  }
+
+  // TODO: Check how to switch branches
+  if (match(TOKEN_KWELSE)) {
+    if (!parse_stmt()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+bool parse_assg_stmt(void) {
+  // grammar rules
+  if (!match(TOKEN_ID)) {
+    return false;
+  }
+  if (!match(TOKEN_OPASSG)) {
+    return false;
+  }
+  if (!parse_arith_exp()) {
+    return false;
+  }
+  if (!match(TOKEN_SEMI)) {
+    return false;
+  }
+  return true;
+}
+bool parse_return_stmt(void) {
+  // grammar rules
+  if (!match(TOKEN_KWRETURN)) {
+    return false;
+  }
+
+  if (currentToken.type == TOKEN_SEMI) {
+    return true;
+  } else if (parse_arith_exp()) {
+    if (!match(TOKEN_SEMI)) {
+      return false;
+    }
+  } else {
+    return false;
+  }
   return true;
 }
 
@@ -350,4 +459,48 @@ bool parse_fn_call(void) {
   return true;
 }
 
-bool parse_opt_expr_list(void) { return true; }
+bool parse_opt_expr_list(void) {
+  if (currentToken.type == TOKEN_ID || currentToken.type == TOKEN_INTCON) {
+    advanceToken();
+    return parse_expr_list();
+  }
+  return true;
+}
+
+bool parse_expr_list(void) {
+  if (!parse_arith_exp()) {
+    return false;
+  }
+
+  if (currentToken.type == TOKEN_COMMA) {
+    advanceToken();
+    if (!parse_expr_list()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool parse_bool_exp(void) {
+  if (!parse_arith_exp()) {
+    return false;
+  }
+  if (!parse_relop()) {
+    return false;
+  }
+  if (!parse_arith_exp()) {
+    return false;
+  }
+  return true;
+}
+
+bool parse_arith_exp(void) {
+  if (currentToken.type != TOKEN_ID && currentToken.type != TOKEN_INTCON) {
+    fprintf(stderr, "ERROR: LINE %d: expected ID or INTCON\n",
+            currentToken.line);
+    return false;
+  }
+  return true;
+}
+bool parse_relop(void) { return true; }
