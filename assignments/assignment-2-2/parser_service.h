@@ -30,4 +30,14 @@ bool parseVariableDeclaration(char *idLex);
 bool semanticCheckVar(const char *idLex);
 bool semanticCheckFunc(const char *idLex);
 
+// G2 Additions
+bool parse_while_stmt(void);
+bool parse_if_stmt(void);
+bool parse_assg_stmt(void);
+bool parse_return_stmt(void);
+
+bool parse_expr_list(void);
+bool parse_bool_exp(void);
+bool parse_arith_exp(void);
+bool parse_relop(void);
 #endif
