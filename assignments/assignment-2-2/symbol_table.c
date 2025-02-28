@@ -13,6 +13,18 @@ Symbol *lookupSymbol(const char *name, Scope *scope) {
   return NULL;
 }
 
+Symbol *lookupSymbolInScope(const char *name, Scope *scope) {
+  Scope *currentScopePtr = scope;
+  while (currentScopePtr != NULL) {
+    Symbol *symbol = lookupSymbol(name, currentScopePtr);
+    if (symbol != NULL) {
+      return symbol;
+    }
+    currentScopePtr = currentScopePtr->parent;
+  }
+  return NULL;
+}
+
 // Add a new symbolbol to the given scope. Caller should have already checked
 // for duplicates.
 bool addSymbol(const char *name, Scope *scope, const char *type,
