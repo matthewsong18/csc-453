@@ -31,6 +31,7 @@ typedef enum {
 typedef struct {
   TokenType type;
   int line; // Line number (for error reporting)
+  char *lexeme;
 } TokenI;
 
 // Scanner function declarations.

@@ -2,7 +2,9 @@
 #include "./scanner.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+extern char *lexeme;
 // Global current token.
 TokenI currentToken;
 
@@ -14,6 +16,7 @@ TokenI getNextToken(void) {
   int tok = get_token();
   TokenI token;
   token.line = currentLine;
+  token.lexeme = strdup(lexeme);
 
   switch (tok) {
   case EOF:
@@ -107,6 +110,9 @@ void advanceToken(void) {
 // Checks that the current token matches the expected type; if so, advances.
 // Otherwise, prints an error and returns false.
 bool match(TokenType expected) {
+  // printf("Trying to match token type %d with expected %d\n",
+  // currentToken.type,
+  //        expected);
   if (currentToken.type == expected) {
     advanceToken();
     return true;
