@@ -9,7 +9,7 @@
 char *currentType = NULL;
 
 void error(char *error_msg) {
-  fprintf(stderr, "ERROR: LINE %d: %64s\n", currentToken.line, error_msg);
+  fprintf(stderr, "ERROR: LINE %d: %s\n", currentToken.line, error_msg);
 }
 
 bool parse_prog(void) {
@@ -285,7 +285,10 @@ bool parse_opt_var_decls(void) {
 }
 
 bool parse_opt_stmt_list(void) {
-  while (currentToken.type == TOKEN_ID) {
+  while (currentToken.type == TOKEN_ID || currentToken.type == TOKEN_KWIF ||
+         currentToken.type == TOKEN_KWWHILE ||
+         currentToken.type == TOKEN_KWRETURN ||
+         currentToken.type == TOKEN_LBRACE || currentToken.type == TOKEN_SEMI) {
     if (!parse_stmt())
       return false;
   }
@@ -313,13 +316,10 @@ bool parse_stmt(void) {
     return true;
   }
   case TOKEN_KWWHILE:
-    error("Failed to parse while");
     return parse_while_stmt();
   case TOKEN_KWIF:
-    advanceToken();
     return parse_if_stmt();
   case TOKEN_KWRETURN:
-    error("Failed to parse return");
     return parse_return_stmt();
   case TOKEN_LBRACE: {
     if (!match(TOKEN_LBRACE))
@@ -356,9 +356,10 @@ bool parse_while_stmt(void) {
   return true;
 }
 bool parse_if_stmt(void) {
+  // printf("Debug: In parse_if_stmt - Token type: %d\n", currentToken.type);
   // grammar rules
   if (!match(TOKEN_KWIF)) {
-    error("Failed to parse if");
+    error("Failed to match TOKEN_KWIF");
     return false;
   }
   if (!match(TOKEN_LPAREN)) {
@@ -423,7 +424,7 @@ bool parse_return_stmt(void) {
 
 bool parse_fn_call(void) {
   // Capture the function identifier before advancing the token
-  char *funcName = strdup(lexeme);
+  char *funcName = strdup(currentToken.lexeme);
   if (!funcName) {
     fprintf(stderr, "ERROR: memory allocation failure\n");
     return false;
@@ -463,9 +464,8 @@ bool parse_fn_call(void) {
 
   free(funcName);
 
-  // Now proceed with syntax checking
-  if (!match(TOKEN_ID))
-    return false;
+  advanceToken();
+
   if (!match(TOKEN_LPAREN))
     return false;
   if (!parse_opt_expr_list())
@@ -513,10 +513,10 @@ bool parse_bool_exp(void) {
 
 bool parse_arith_exp(void) {
   if (currentToken.type != TOKEN_ID && currentToken.type != TOKEN_INTCON) {
-    fprintf(stderr, "ERROR: LINE %d: expected ID or INTCON\n",
-            currentToken.line);
+    error("expected ID or INTCON");
     return false;
   }
+  advanceToken();
   return true;
 }
 
