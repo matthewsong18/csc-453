@@ -15,7 +15,8 @@ Symbol *lookupSymbol(const char *name, Scope *scope) {
 
 // Add a new symbolbol to the given scope. Caller should have already checked
 // for duplicates.
-bool addSymbol(const char *name, Scope *scope, const char *type) {
+bool addSymbol(const char *name, Scope *scope, const char *type,
+               bool isFunction) {
   Symbol *symbol = malloc(sizeof(Symbol));
   if (!symbol) {
     fprintf(stderr, "ERROR: memory allocation failure\n");
@@ -34,6 +35,7 @@ bool addSymbol(const char *name, Scope *scope, const char *type) {
     fprintf(stderr, "ERROR: memory allocation failure for symbolbol type\n");
     return false;
   }
+  symbol->isFunction = isFunction;
   symbol->next = scope->symbols;
   scope->symbols = symbol;
   return true;

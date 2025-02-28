@@ -90,7 +90,6 @@ bool parseVariableDeclaration(char *idLex) {
   return true;
 }
 
-// Semantic check for a variable declaration.
 bool semanticCheckVar(const char *idLex) {
   if (!chk_decl_flag)
     return true;
@@ -99,10 +98,10 @@ bool semanticCheckVar(const char *idLex) {
             currentToken.line, idLex);
     return false;
   }
-  return addSymbol(idLex, currentScope, currentType);
+  return addSymbol(idLex, currentScope, currentType,
+                   false); // false for variables
 }
 
-// Semantic check for a function declaration.
 bool semanticCheckFunc(const char *idLex) {
   if (!chk_decl_flag)
     return true;
@@ -111,7 +110,7 @@ bool semanticCheckFunc(const char *idLex) {
             currentToken.line, idLex);
     return false;
   }
-  if (!addSymbol(idLex, globalScope, currentType))
+  if (!addSymbol(idLex, globalScope, currentType, true)) // true for functions
     return false;
   pushScope();
   return true;
@@ -155,7 +154,7 @@ bool parse_id_list(void) {
         return false;
       }
       // Add the symbol to the current scope
-      if (!addSymbol(idLex, currentScope, currentType)) {
+      if (!addSymbol(idLex, currentScope, currentType, false)) {
         free(idLex);
         return false;
       }
@@ -258,12 +257,21 @@ bool parse_fn_call(void) {
     return false;
   }
 
-  // Check if function is declared (if semantic checking is enabled)
-  if (chk_decl_flag && !lookupSymbol(funcName, globalScope)) {
-    fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
-            currentToken.line, funcName);
-    free(funcName);
-    return false;
+  // Check if function exists and is actually a function
+  if (chk_decl_flag) {
+    Symbol *symbol = lookupSymbol(funcName, globalScope);
+    if (!symbol) {
+      fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
+              currentToken.line, funcName);
+      free(funcName);
+      return false;
+    }
+    if (!symbol->isFunction) {
+      fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
+              currentToken.line, funcName);
+      free(funcName);
+      return false;
+    }
   }
 
   free(funcName);
