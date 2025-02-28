@@ -251,6 +251,24 @@ bool parse_stmt(void) {
 }
 
 bool parse_fn_call(void) {
+  // Capture the function identifier before advancing the token
+  char *funcName = strdup(lexeme);
+  if (!funcName) {
+    fprintf(stderr, "ERROR: memory allocation failure\n");
+    return false;
+  }
+
+  // Check if function is declared (if semantic checking is enabled)
+  if (chk_decl_flag && !lookupSymbol(funcName, globalScope)) {
+    fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
+            currentToken.line, funcName);
+    free(funcName);
+    return false;
+  }
+
+  free(funcName);
+
+  // Syntax checking
   if (!match(TOKEN_ID))
     return false;
   if (!match(TOKEN_LPAREN))
