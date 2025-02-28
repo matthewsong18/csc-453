@@ -1,0 +1,28 @@
+FIRST sets:
+  fn_call:   ID
+  formals:   kwINT
+  func_defn:   kwINT
+  id_list:   ID
+  opt_expr_list:   <epsilon>
+  opt_formals:   <epsilon> kwINT
+  opt_stmt_list:   <epsilon> ID
+  opt_var_decls:   <epsilon> kwINT
+  prog:   <epsilon> kwINT
+  stmt:   ID
+  type:   kwINT
+  var_decl:   kwINT
+
+FOLLOW sets:
+  fn_call:   ID RBRACE
+  formals:   RPAREN
+  func_defn:   kwINT <EOF>
+  id_list:   SEMI
+  opt_expr_list:   RPAREN
+  opt_formals:   RPAREN
+  opt_stmt_list:   RBRACE
+  opt_var_decls:   ID RBRACE
+  prog:   <EOF>
+  stmt:   ID RBRACE
+  type:   ID
+  var_decl:   kwINT ID RBRACE <EOF>
+
