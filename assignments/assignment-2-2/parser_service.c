@@ -130,12 +130,39 @@ bool parse_id_list(void) {
   while (currentToken.type == TOKEN_COMMA) {
     if (!match(TOKEN_COMMA))
       return false;
-    if (!match(TOKEN_ID)) {
+
+    // Capture the identifier before advancing
+    if (currentToken.type != TOKEN_ID) {
       fprintf(stderr,
               "ERROR: LINE %d: expected identifier after comma in id_list\n",
               currentToken.line);
       return false;
     }
+
+    // Get the lexeme before advancing
+    char *idLex = strdup(lexeme);
+    if (!idLex) {
+      fprintf(stderr, "ERROR: memory allocation failure\n");
+      return false;
+    }
+
+    // Perform semantic check for duplicate declarations
+    if (chk_decl_flag) {
+      if (lookupSymbol(idLex, currentScope)) {
+        fprintf(stderr, "ERROR: LINE %d: duplicate declaration of '%s'\n",
+                currentToken.line, idLex);
+        free(idLex);
+        return false;
+      }
+      // Add the symbol to the current scope
+      if (!addSymbol(idLex, currentScope, currentType)) {
+        free(idLex);
+        return false;
+      }
+    }
+
+    free(idLex);
+    advanceToken(); // Now advance the token after all processing
   }
   return true;
 }
