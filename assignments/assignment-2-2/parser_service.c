@@ -68,6 +68,9 @@ bool parseFunctionDeclaration(char *idLex) {
     return false;
   }
   bool result = parse_func_defn_rest();
+  if (chk_decl_flag) {
+    popScope(); // Pop scope when exiting
+  }
   free(idLex);
   return result;
 }
@@ -187,12 +190,24 @@ bool parse_func_defn_rest(void) {
 bool parse_var_decl(void) {
   if (!parse_type())
     return false;
-  if (!match(TOKEN_ID))
+  // Capture the identifier and perform semantic checking
+  char *idLex = captureID();
+  if (!idLex)
     return false;
-  if (!parse_id_list())
+  if (!semanticCheckVar(idLex)) {
+    free(idLex);
     return false;
-  if (!match(TOKEN_SEMI))
+  }
+  // Process any additional identifiers in the declaration
+  if (!parse_id_list()) {
+    free(idLex);
     return false;
+  }
+  if (!match(TOKEN_SEMI)) {
+    free(idLex);
+    return false;
+  }
+  free(idLex);
   return true;
 }
 
@@ -289,35 +304,35 @@ bool parse_fn_call(void) {
     return false;
   }
 
-  // Check if function exists and is actually a function
+  // Check if the name exists in the current scope chain
   if (chk_decl_flag) {
-    // First check if there's a local variable with this name
-    Symbol *localSymbol = lookupSymbolInScope(funcName, currentScope);
+    // Start search from current scope and go up
+    Scope *scopePtr = currentScope;
+    Symbol *symbol = NULL;
 
-    if (localSymbol) {
-      // If there's a local symbol with this name and we're trying to call it
-      // as a function, that's an error
-      if (!localSymbol->isFunction) {
-        fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
-                currentToken.line, funcName);
-        free(funcName);
-        return false;
+    // Search up the scope chain for the first occurrence of the name
+    while (scopePtr != NULL && symbol == NULL) {
+      symbol = lookupSymbol(funcName, scopePtr);
+      if (symbol != NULL) {
+        // If we found the name and it's not a function, that's an error
+        if (!symbol->isFunction) {
+          fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
+                  currentToken.line, funcName);
+          free(funcName);
+          return false;
+        }
+        // If it is a function, we're good!
+        break;
       }
-    } else {
-      // Check global scope for the function
-      Symbol *globalSymbol = lookupSymbol(funcName, globalScope);
-      if (!globalSymbol) {
-        fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
-                currentToken.line, funcName);
-        free(funcName);
-        return false;
-      }
-      if (!globalSymbol->isFunction) {
-        fprintf(stderr, "ERROR: LINE %d: '%s' is not a function\n",
-                currentToken.line, funcName);
-        free(funcName);
-        return false;
-      }
+      scopePtr = scopePtr->parent;
+    }
+
+    // If we didn't find the name in any scope, it's undeclared
+    if (symbol == NULL) {
+      fprintf(stderr, "ERROR: LINE %d: call to undeclared function '%s'\n",
+              currentToken.line, funcName);
+      free(funcName);
+      return false;
     }
   }
 
