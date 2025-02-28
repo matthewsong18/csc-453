@@ -55,6 +55,9 @@ TokenI getNextToken(void) {
   case kwIF:
     token.type = TOKEN_KWIF;
     break;
+  case kwELSE:
+    token.type = TOKEN_KWELSE;
+    break;
   case kwRETURN:
     token.type = TOKEN_KWRETURN;
     break;
