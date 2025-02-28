@@ -1,43 +1,56 @@
+ifeq ($(wildcard src/features),)
+# --- Flat structure (submission) ---
+SOURCES := $(wildcard *.c)
+OBJECTS := $(patsubst %.c,%.o,$(SOURCES))
+INCLUDES :=
+PATTERN_RULE = %.o: %.c
+	CFLAGS = -Wall $(INCLUDES)
+else
+# --- Organized structure (development) ---
+SRCDIR := src
+FEATURES_DIR := $(SRCDIR)/features
+PARSER_DIR := $(FEATURES_DIR)/parser
+SCANNER_DIR := $(FEATURES_DIR)/scanner
+
+SOURCES := $(wildcard $(PARSER_DIR)/*.c) \
+           $(wildcard $(SCANNER_DIR)/*.c)
+# Remove the 'src/' prefix for objects
+OBJECTS := $(SOURCES:src/%.c=obj/%.o)
+INCLUDES := -I$(PARSER_DIR) -I$(SCANNER_DIR)
+PATTERN_RULE = obj/%.o: src/%.c
+	CFLAGS = -Wall $(INCLUDES)
+endif
+
 CC = gcc
-CFLAGS = -Wall
 
 all: compile
 
-compile: driver.o parser_main.o token_service.o grammar_interface.o parser_service.o symbol_table.o scanner.o complex.o keywords.o operators.o punctuation.o
-	$(CC) $(CFLAGS) -o compile driver.o parser_main.o token_service.o grammar_interface.o parser_service.o symbol_table.o scanner.o complex.o keywords.o operators.o punctuation.o
+compile: $(OBJECTS)
+	$(CC) $(CFLAGS) -o compile $(OBJECTS)
 
-driver.o: driver.c
-	$(CC) $(CFLAGS) -c driver.c
-
-parser_main.o: parser_main.c token_service.h parser_service.h symbol_table.h
-	$(CC) $(CFLAGS) -c parser_main.c
-
-scanner.o: scanner.c scanner.h
-	$(CC) $(CFLAGS) -c scanner.c
-
-complex.o: complex.c
-	$(CC) $(CFLAGS) -c complex.c
-
-keywords.o: keywords.c
-	$(CC) $(CFLAGS) -c keywords.c
-
-operators.o: operators.c
-	$(CC) $(CFLAGS) -c operators.c
-
-punctuation.o: punctuation.c
-	$(CC) $(CFLAGS) -c punctuation.c
-
-token_service.o: token_service.c token_service.h scanner.h
-	$(CC) $(CFLAGS) -c token_service.c
-
-grammar_interface.o: grammar_interface.c grammar_interface.h token_service.h
-	$(CC) $(CFLAGS) -c grammar_interface.c
-
-parser_service.o: parser_service.c parser_service.h token_service.h symbol_table.h
-	$(CC) $(CFLAGS) -c parser_service.c
-
-symbol_table.o: symbol_table.c symbol_table.h
-	$(CC) $(CFLAGS) -c symbol_table.c
+# Organized pattern rule:
+ifeq ($(wildcard src/features),)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+else
+obj/%.o: src/%.c | obj
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -c $< -o $@
+	
+obj:
+	mkdir -p obj
+endif
 
 clean:
-	rm -f *.o compile
+ifeq ($(wildcard src/features),)
+	rm -f $(OBJECTS) compile
+	rm -rf ../submission
+else
+	rm -rf obj compile submission
+endif
+
+submit:
+	mkdir -p submission
+	cp $(SOURCES) submission/
+	cp $(PARSER_DIR)/*.h $(SCANNER_DIR)/*.h $(COMMON_DIR)/*.h submission/ 2>/dev/null || true
+	cp Makefile submission/
