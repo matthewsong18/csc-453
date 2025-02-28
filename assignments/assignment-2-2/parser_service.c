@@ -8,6 +8,10 @@
 
 char *currentType = NULL;
 
+void error(char *error_msg) {
+  fprintf(stderr, "ERROR: LINE %d: %64s\n", currentToken.line, error_msg);
+}
+
 bool parse_prog(void) {
   while (currentToken.type == TOKEN_KWINT) {
     if (!parse_decl_or_func())
@@ -291,24 +295,31 @@ bool parse_opt_stmt_list(void) {
 bool parse_stmt(void) {
   switch (currentToken.type) {
   case TOKEN_ID: {
-    advanceToken();
-    // Lookahead: if next token is LPAREN then fn_call, else assg_stmt.
-    if (currentToken.type == TOKEN_LPAREN) {
-      return parse_fn_call();
+    // Peek at the next token to determine the production
+    TokenI nextToken = peekToken();
+    if (nextToken.type == TOKEN_LPAREN) {
+      // It's a function call
+      if (!parse_fn_call()) {
+        error("Failed to parse fn call in parse stmt");
+        return false;
+      }
     } else {
-      return parse_assg_stmt();
+      // It's an assignment
+      if (!parse_assg_stmt()) {
+        return false;
+        error("Failed in parse assg stmt in parse stmt");
+      }
     }
+    return true;
   }
   case TOKEN_KWWHILE:
-    advanceToken();
+    error("Failed to parse while");
     return parse_while_stmt();
   case TOKEN_KWIF:
-    printf("Got here\n");
-    fflush(stdout);
     advanceToken();
     return parse_if_stmt();
   case TOKEN_KWRETURN:
-    advanceToken();
+    error("Failed to parse return");
     return parse_return_stmt();
   case TOKEN_LBRACE: {
     if (!match(TOKEN_LBRACE))
@@ -347,27 +358,32 @@ bool parse_while_stmt(void) {
 bool parse_if_stmt(void) {
   // grammar rules
   if (!match(TOKEN_KWIF)) {
+    error("Failed to parse if");
     return false;
   }
   if (!match(TOKEN_LPAREN)) {
+    error("Failed to parse if");
     return false;
   }
   if (!parse_bool_exp()) {
+    error("Failed to parse if");
     return false;
   }
   if (!match(TOKEN_RPAREN)) {
+    error("Failed to parse if");
     return false;
   }
   if (!parse_stmt()) {
+    error("Failed to parse if");
     return false;
   }
 
-  // TODO: Check how to switch branches
-  if (match(TOKEN_KWELSE)) {
-    if (!parse_stmt()) {
-      return false;
-    }
-  }
+  // if (match(TOKEN_KWELSE)) {
+  //   if (!parse_stmt()) {
+  //   error("Failed to parse if");
+  //     return false;
+  //   }
+  // }
 
   return true;
 }
@@ -503,4 +519,20 @@ bool parse_arith_exp(void) {
   }
   return true;
 }
-bool parse_relop(void) { return true; }
+
+bool parse_relop(void) {
+  switch (currentToken.type) {
+  case TOKEN_OPEQ:
+  case TOKEN_OPNE:
+  case TOKEN_OPLE:
+  case TOKEN_OPLT:
+  case TOKEN_OPGE:
+  case TOKEN_OPGT:
+    advanceToken();
+    return true;
+  default:
+    fprintf(stderr, "ERROR: LINE %d: expected relational operator\n",
+            currentToken.line);
+    return false;
+  }
+}
