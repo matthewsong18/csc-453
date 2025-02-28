@@ -37,10 +37,52 @@ opt_stmt_list : stmt opt_stmt_list
     ;
 
 stmt : fn_call
+    | while_stmt
+    | if_stmt
+    | assg_stmt
+    | return_stmt
+    | LBRACE opt_stmt_list RBRACE
+    | SEMI
+    ;
+
+if_stmt : kwIF LPAREN bool_exp RPAREN stmt
+    | kwIF LPAREN bool_exp RPAREN stmt kwELSE stmt
+    ;
+
+while_stmt : kwWHILE LPAREN bool_exp RPAREN stmt
+    ;
+
+return_stmt : kwRETURN SEMI
+    | kwRETURN arith_exp SEMI
+    ;
+
+assg_stmt : ID opASSG arith_exp SEMI
     ;
 
 fn_call : ID LPAREN opt_expr_list RPAREN SEMI
     ;
 
 opt_expr_list : /* epsilon */
+    | expr_list
+    ;
+
+expr_list : arith_exp COMMA expr_list
+  	| arith_exp
+    ;
+
+bool_exp : arith_exp relop arith_exp
+    ;
+ 
+
+arith_exp : ID
+    | INTCON
+    ;
+ 
+
+relop : opEQ
+  	| opNE
+  	| opLE
+  	| opLT
+  	| opGE
+  	| opGT
     ;
