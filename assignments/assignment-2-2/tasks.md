@@ -1,9 +1,9 @@
-# CSC 352 Assignment 1 Milestone 2
+# CSC 352 Assignment 2 Milestone 2
 
 ## Tasks
 
-- Figure out grammar
-- Make module for parsing
-- Patch scanner into parser
-- Implement parsing functions
-- Error handling
+- Update grammar rules spec to G2 specs
+
+- Update parse functions for new G2 spec
+
+- Update semantic checking for G2 spec
