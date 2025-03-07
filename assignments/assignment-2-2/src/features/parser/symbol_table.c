@@ -25,7 +25,7 @@ Symbol *lookupSymbolInScope(const char *name, const Scope *scope) {
   return NULL;
 }
 
-// Add a new symbolbol to the given scope. Caller should have already checked
+// Add a new symbol to the given scope. Caller should have already checked
 // for duplicates.
 bool addSymbol(const char *name, Scope *scope, const char *type,
                const bool isFunction) {

@@ -38,20 +38,32 @@ bool parse_bool_exp_impl(const GrammarRule *rule);
 bool parse_arith_exp_impl(const GrammarRule *rule);
 bool parse_relop_impl(const GrammarRule *rule);
 
-// Helper function to create and store a symbol
-bool add_symbol_check(const char *name, bool isFunction) {
-  if (!chk_decl_flag)
+bool lookup(const char *name) {
+  if (!chk_decl_flag) {
     return true;
+  }
 
-  Scope *scopeToCheck = isFunction ? globalScope : currentScope;
-
-  if (lookupSymbol(name, scopeToCheck)) {
-    fprintf(stderr, "ERROR: LINE %d: duplicate %s declaration '%s'\n",
-            currentToken.line, isFunction ? "function" : "", name);
+  if (!lookupSymbolInScope(name, currentScope)) {
     return false;
   }
 
-  return addSymbol(name, scopeToCheck, currentType, isFunction);
+  return true;
+}
+
+// Helper function to create and store a symbol
+bool add_symbol_check(const char *name) {
+  if (!chk_decl_flag)
+    return true;
+
+  if (lookup(name)) {
+    fprintf(stderr, "ERROR: LINE %d: duplicate %s declaration\n",
+            currentToken.line, name);
+    return false;
+  }
+
+  const bool isFunction = currentScope->parent != NULL;
+
+  return addSymbol(name, currentScope, currentType, isFunction);
 }
 
 // Helper function to capture an identifier
@@ -70,7 +82,6 @@ char *capture_identifier() {
   advanceToken();
   return id;
 }
-
 
 void debug(char *source) {
   if (DEBUG_ON) {
@@ -140,7 +151,8 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   }
 
   // Adding symbol
-  if (!add_symbol_check(id, true)) {
+  if (!add_symbol_check(id)) {
+    report_error(rule->name, "adding symbol failed");
     free(id);
     return false;
   }
@@ -242,7 +254,8 @@ bool parse_formals_impl(const GrammarRule *rule) {
   }
 
   // Adding symbol
-  if (!add_symbol_check(id, false)) {
+  if (!add_symbol_check(id)) {
+    report_error(rule->name, "adding symbol failed");
     free(id);
     return false;
   }
@@ -415,8 +428,11 @@ bool parse_fn_call_impl(const GrammarRule *rule) {
     return false;
   }
 
-  // TODO: Is this lookup?
-  lookupSymbol(id, currentScope);
+  if (!lookup(id)) {
+    report_error(rule->name, "ID does not exist");
+    free(id);
+    return false;
+  }
 
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
@@ -506,11 +522,11 @@ bool parse_arith_exp_impl(const GrammarRule *rule) {
   // Check for ID
   if (currentToken.type == TOKEN_ID) {
     char *id = capture_identifier();
-    // if (!lookupSymbolInScope(id, currentScope)) {
-    //   report_error(rule->name, "unexpected token in id");
-    //   free(id);
-    //   return false;
-    // }
+    if (!lookup(id)) {
+      report_error(rule->name, "ID does not exist");
+      free(id);
+      return false;
+    }
     free(id);
     return true;
   }
@@ -710,10 +726,9 @@ bool parse_assg_stmt_impl(const GrammarRule *rule) {
     return false;
   }
 
-  // TODO
   // Lookup
-  if (!lookupSymbolInScope(id, currentScope)) {
-    report_error(rule->name, "unknown id");
+  if (!lookup(id)) {
+    report_error(rule->name, "ID does not exist");
     free(id);
     return false;
   }
@@ -833,16 +848,7 @@ bool parse_id_list_impl(const GrammarRule *rule) {
     return false;
   }
 
-  if (chk_decl_flag) {
-    if (lookupSymbol(id, currentScope)) {
-      fprintf(stderr, "ERROR: LINE %d: duplicate declaration of '%s'\n",
-              currentToken.line, id);
-      free(id);
-      return false;
-    }
-
-    add_symbol_check(id, false);
-  }
+  add_symbol_check(id);
 
   // Parse optional COMMA
   if (match(TOKEN_COMMA)) {
