@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-Symbol *lookupSymbol(const char *name, Scope *scope) {
+Symbol *lookupSymbol(const char *name, const Scope *scope) {
   Symbol *symbol = scope->symbols;
   while (symbol != NULL) {
     if (strcmp(symbol->name, name) == 0)
@@ -13,8 +13,8 @@ Symbol *lookupSymbol(const char *name, Scope *scope) {
   return NULL;
 }
 
-Symbol *lookupSymbolInScope(const char *name, Scope *scope) {
-  Scope *currentScopePtr = scope;
+Symbol *lookupSymbolInScope(const char *name, const Scope *scope) {
+  const Scope *currentScopePtr = scope;
   while (currentScopePtr != NULL) {
     Symbol *symbol = lookupSymbol(name, currentScopePtr);
     if (symbol != NULL) {
@@ -28,7 +28,7 @@ Symbol *lookupSymbolInScope(const char *name, Scope *scope) {
 // Add a new symbolbol to the given scope. Caller should have already checked
 // for duplicates.
 bool addSymbol(const char *name, Scope *scope, const char *type,
-               bool isFunction) {
+               const bool isFunction) {
   Symbol *symbol = malloc(sizeof(Symbol));
   if (!symbol) {
     fprintf(stderr, "ERROR: memory allocation failure\n");
@@ -82,4 +82,15 @@ void popScope(void) {
     symbol = next;
   }
   free(temp);
+}
+
+void initSymbolTable(void) {
+  globalScope = malloc(sizeof(Scope));
+  if (!globalScope) {
+    fprintf(stderr, "ERROR: memory allocation failure in initSymbolTable\n");
+    exit(1);
+  }
+  globalScope->symbols = NULL;
+  globalScope->parent = NULL;
+  currentScope = globalScope;
 }

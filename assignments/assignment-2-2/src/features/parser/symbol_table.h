@@ -20,12 +20,13 @@ typedef struct Scope {
 extern Scope *globalScope;
 extern Scope *currentScope;
 
-Symbol *lookupSymbol(const char *name, Scope *scope);
-Symbol *lookupSymbolInScope(const char *name, Scope *scope);
+Symbol *lookupSymbol(const char *name, const Scope *scope);
+Symbol *lookupSymbolInScope(const char *name, const Scope *scope);
 bool addSymbol(const char *name, Scope *scope, const char *type,
                bool isFunction);
 void pushScope(void);
 void popScope(void);
+void initSymbolTable(void);
 
 #endif
 

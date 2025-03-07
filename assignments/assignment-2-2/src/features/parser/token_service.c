@@ -111,16 +111,13 @@ void advanceToken(void) {
 }
 
 // Checks that the current token matches the expected type; if so, advances.
-// Otherwise, prints an error and returns false.
-bool match(TokenType expected) {
+bool match(const TokenType expected) {
   // printf("Trying to match token type %d with expected %d\n",
   // currentToken.type,
   //        expected);
   if (currentToken.type == expected) {
     advanceToken();
     return true;
-  } else {
-    fprintf(stderr, "ERROR: LINE %d: unexpected token\n", currentToken.line);
-    return false;
   }
+  return false;
 }
