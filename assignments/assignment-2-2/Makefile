@@ -44,9 +44,8 @@ endif
 clean:
 ifeq ($(wildcard src/features),)
 	rm -f $(OBJECTS) compile
-	rm -rf ../submission
 else
-	rm -rf obj compile submission
+	rm -rf obj compile
 endif
 
 submit:
