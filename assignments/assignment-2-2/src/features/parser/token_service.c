@@ -1,5 +1,5 @@
 #include "./token_service.h"
-#include "./scanner.h"
+#include "../scanner/scanner.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -2,6 +2,7 @@
 #include "./grammar_rule.h"
 #include "./symbol_table.h"
 #include "scanner.h"
+#include "token_service.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -109,28 +110,25 @@ bool parse_prog_impl(const GrammarRule *rule) {
       return false;
     }
 
-    // Checking that ID follows type
+    // Because we don't know whether the following rule will be a var_decl or
+    // func_defn at this point, we don't want to use match(), because match()
+    // will advance the token and leave us no way to access the current ID
+    // unless we save it globally. We need to postpone the ID so we can save it
+    // on the right scope in the symbol table.
     if (!type_rule->isFollow(type_rule, currentToken)) {
       report_error(rule->name, "expected ID after type");
       return false;
     }
 
-    const TokenI peek_token = peekToken();
-    if (peek_token.type == TOKEN_LPAREN) {
-      const GrammarRule *function_rule = get_rule("func_defn");
-      good_result = function_rule->parse(function_rule);
-    } else {
-      const GrammarRule *var_rule = get_rule("var_decl");
-      good_result = var_rule->parse(var_rule);
-    }
-
-    // Checking result
-    if (!good_result) {
+    const GrammarRule *decl_or_func = get_rule("decl_or_func");
+    if (!decl_or_func->parse(decl_or_func)) {
+      report_error(rule->name, "failed to parse decl_or_func");
       return false;
     }
   }
 
   // Check follow even if first is not matched because of epsilon
+  // Matching EOF
   if (!rule->isFollow(rule, currentToken)) {
     report_error(rule->name, "unexpected follow token");
     return false;
@@ -139,28 +137,56 @@ bool parse_prog_impl(const GrammarRule *rule) {
   return true;
 }
 
+bool parse_decl_or_func_impl(const GrammarRule *rule) {
+  debug("parse_decl_or_func_impl");
+
+  // Check token is in FIRST set
+  if (!rule->isFirst(rule, currentToken)) {
+    report_error(rule->name, "token does not match first set");
+    return false;
+  }
+
+  // Check var_decl rule
+  TokenI lookahead_token = peekToken();
+  if (lookahead_token.type == TOKEN_COMMA) {
+    const GrammarRule *var_decl = get_rule("var_decl");
+    if (!var_decl->parse(var_decl)) {
+      report_error(rule->name, "failed to parse var_decl");
+      return false;
+    }
+  }
+
+  else if (lookahead_token.type == TOKEN_LPAREN) {
+    const GrammarRule *func_defn = get_rule("func_defn");
+    if (!func_defn->parse(func_defn)) {
+      report_error(rule->name, "failed to parse func_defn");
+      return false;
+    }
+  }
+
+  else {
+    // Because match() only checks the current_token and we did a lookahead,
+    // causing us to be one ahead of the current_token, we need to advance
+    // the token to catch up the current_token. The only reason why the other
+    // two rules needed a lookahead is because the current token is the ID.
+    // Depending on which rule is chosen, the scope where the function gets
+    // saved on the symbol table will change.
+    advanceToken();
+    if (!match(TOKEN_SEMI)) {
+      report_error(rule->name,
+                   "token didn't match decl or function grammar rules");
+      return false;
+    }
+  }
+
+  return true;
+}
+
 bool parse_func_defn_impl(const GrammarRule *rule) {
   debug("parse_func_defn_impl");
-  // Type was already parsed in prog
-
-  // Parse ID
-  char *id = capture_identifier();
-  if (!id) {
-    report_error(rule->name, "expected identifier");
-    return false;
-  }
-
-  // Adding symbol
-  if (!add_symbol_check(id)) {
-    report_error(rule->name, "adding symbol failed");
-    free(id);
-    return false;
-  }
-
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
     report_error(rule->name, "expected LPAREN token");
-    free(id);
     return false;
   }
 
@@ -168,21 +194,18 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   const GrammarRule *opt_formals = get_rule("opt_formals");
   if (!opt_formals->parse(opt_formals)) {
     report_error(rule->name, "unexpected token in opt_formals");
-    free(id);
     return false;
   }
 
   // Parse RPAREN
   if (!match(TOKEN_RPAREN)) {
     report_error(rule->name, "expected RPAREN token");
-    free(id);
     return false;
   }
 
   // PARSE LBRACE
   if (!match(TOKEN_LBRACE)) {
     report_error(rule->name, "expected LBRACE token");
-    free(id);
     return false;
   }
 
@@ -190,7 +213,6 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   const GrammarRule *opt_var_decls = get_rule("opt_var_decls");
   if (!opt_var_decls->parse(opt_var_decls)) {
     report_error(rule->name, "unexpected token in opt_var_decls");
-    free(id);
     return false;
   }
 
@@ -198,14 +220,12 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   const GrammarRule *opt_stmt_list = get_rule("opt_stmt_list");
   if (!opt_stmt_list->parse(opt_stmt_list)) {
     report_error(rule->name, "unexpected token in opt_stmt_list");
-    free(id);
     return false;
   }
 
   // Parse RBRACE
   if (!match(TOKEN_RBRACE)) {
     report_error(rule->name, "expected RBRACE token");
-    free(id);
     return false;
   }
 
@@ -791,10 +811,9 @@ bool parse_return_stmt_impl(const GrammarRule *rule) {
   return true;
 }
 
-// Variable declaration rule: var_decl → type ID id_list ';'
+// Variable declaration
 bool parse_var_decl_impl(const GrammarRule *rule) {
   debug("parse_var_decl_impl");
-  // Type was already parsed in prog
 
   // Parsing id list
   const GrammarRule *id_list = get_rule("id_list");
