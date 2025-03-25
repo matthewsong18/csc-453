@@ -5,6 +5,7 @@
 #include <string.h>
 
 extern char *lexeme;
+extern bool DEBUG_ON;
 // Global current token.
 TokenI currentToken;
 
@@ -100,13 +101,17 @@ TokenI peekToken(void) {
   return peekedToken;
 }
 
-// Advances to the next token.
+// Advances to the next token and updates the currentToken
 void advanceToken(void) {
   if (hasPeekedToken) {
     currentToken = peekedToken;
     hasPeekedToken = false;
   } else {
     currentToken = getNextToken();
+  }
+  if (DEBUG_ON) {
+    printf("%s\n", currentToken.lexeme);
+    fflush(stdout);
   }
 }
 

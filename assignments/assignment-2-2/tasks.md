@@ -2,8 +2,13 @@
 
 ## Tasks
 
-- Update grammar rules spec to G2 specs
+- Check whether the symbol table cares about function or variable for names. If
+  the name exists, irrelevant of whether the name is for a function or variable,
+  should the check fail?
 
-- Update parse functions for new G2 spec
+- Add a local scope when a function defn starts
 
-- Update semantic checking for G2 spec
+- Switch back to global scope when a function defn ends
+
+- Check whether the local scope is supposed to be dropped when the func_defn
+  ends

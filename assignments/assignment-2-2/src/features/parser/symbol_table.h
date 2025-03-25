@@ -7,7 +7,6 @@
 typedef struct Symbol {
     char *name;
     char *type;
-    bool isFunction;
     struct Symbol *next;
 } Symbol;
 
@@ -22,8 +21,7 @@ extern Scope *currentScope;
 
 Symbol *lookupSymbol(const char *name, const Scope *scope);
 Symbol *lookupSymbolInScope(const char *name, const Scope *scope);
-bool addSymbol(const char *name, Scope *scope, const char *type,
-               bool isFunction);
+bool addSymbol(const char *name, Scope *scope, const char *type);
 void pushScope(void);
 void popScope(void);
 void initSymbolTable(void);

@@ -1,9 +1,7 @@
 // parser_rules.c
 #include "./grammar_rule.h"
 #include "./symbol_table.h"
-#include "scanner.h"
 #include "token_service.h"
-
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,14 +9,15 @@
 
 // External variables
 extern int chk_decl_flag;
-extern char *currentType;
 
 // Debug flag
-bool DEBUG_ON = false;
+bool DEBUG_ON = true;
 
 // Forward declarations for all parse functions
+bool assg_or_fn_impl(const GrammarRule *rule);
 bool parse_prog_impl(const GrammarRule *rule);
 bool parse_func_defn_impl(const GrammarRule *rule);
+bool parse_decl_or_func_impl(const GrammarRule *rule);
 bool parse_var_decl_impl(const GrammarRule *rule);
 bool parse_type_impl(const GrammarRule *rule);
 bool parse_id_list_impl(const GrammarRule *rule);
@@ -64,7 +63,11 @@ bool add_symbol_check(const char *name) {
 
   const bool isFunction = currentScope->parent != NULL;
 
-  return addSymbol(name, currentScope, currentType, isFunction);
+  if (isFunction) {
+    return addSymbol(name, currentScope, "function");
+  } else {
+    return addSymbol(name, currentScope, "variable");
+  }
 }
 
 // Helper function to capture an identifier
@@ -98,12 +101,10 @@ bool parse_prog_impl(const GrammarRule *rule) {
   debug("parse_prog_impl");
   // Check first
   while (rule->isFirst(rule, currentToken)) {
-    // Parse prog
-    bool good_result;
-
     // We need to parse type since both func and var have type and ID so we'll
     // be doing the first check in prog instead
     // Parsing type
+    debug("prog calls type");
     const GrammarRule *type_rule = get_rule("type");
     if (!type_rule->parse(type_rule)) {
       report_error(rule->name, "expected a type");
@@ -120,6 +121,8 @@ bool parse_prog_impl(const GrammarRule *rule) {
       return false;
     }
 
+    // Call decl_or_func rule
+    debug("prog calls decl_or_func");
     const GrammarRule *decl_or_func = get_rule("decl_or_func");
     if (!decl_or_func->parse(decl_or_func)) {
       report_error(rule->name, "failed to parse decl_or_func");
@@ -138,17 +141,25 @@ bool parse_prog_impl(const GrammarRule *rule) {
 }
 
 bool parse_decl_or_func_impl(const GrammarRule *rule) {
-  debug("parse_decl_or_func_impl");
 
-  // Check token is in FIRST set
-  if (!rule->isFirst(rule, currentToken)) {
-    report_error(rule->name, "token does not match first set");
+  TokenI lookahead_token = peekToken();
+  // Check next token is in FIRST set
+  if (!rule->isFirst(rule, lookahead_token)) {
+    report_error(rule->name, "lookahead token does not match first set");
     return false;
   }
 
   // Check var_decl rule
-  TokenI lookahead_token = peekToken();
   if (lookahead_token.type == TOKEN_COMMA) {
+    // Add ID to symbol table
+    char *id_name = capture_identifier();
+    if (add_symbol_check(id_name) == false) {
+      report_error(rule->name, "failed to add variable id to symbol table");
+      return false;
+    }
+
+    // Call var_decl
+    debug("decl_or_func calls var_decl");
     const GrammarRule *var_decl = get_rule("var_decl");
     if (!var_decl->parse(var_decl)) {
       report_error(rule->name, "failed to parse var_decl");
@@ -157,6 +168,15 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
   }
 
   else if (lookahead_token.type == TOKEN_LPAREN) {
+    // Add ID to symbol table
+    char *id_name = capture_identifier();
+    if (add_symbol_check(id_name) == false) {
+      report_error(rule->name, "failed to add function id to symbol table");
+      return false;
+    }
+
+    // Call func_defn
+    debug("decl_or_func calls func_defn");
     const GrammarRule *func_defn = get_rule("func_defn");
     if (!func_defn->parse(func_defn)) {
       report_error(rule->name, "failed to parse func_defn");
@@ -183,14 +203,18 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
 }
 
 bool parse_func_defn_impl(const GrammarRule *rule) {
-  debug("parse_func_defn_impl");
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
     report_error(rule->name, "expected LPAREN token");
     return false;
   }
 
+  // Everything from the LPAREN token to the RBRACE token in the func_defn is
+  // part of the function's local scope
+  pushScope();
+
   // Parse opt_formals
+  debug("func_defn calls opt_formals");
   const GrammarRule *opt_formals = get_rule("opt_formals");
   if (!opt_formals->parse(opt_formals)) {
     report_error(rule->name, "unexpected token in opt_formals");
@@ -210,6 +234,7 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   }
 
   // Parse opt_var_decls
+  debug("func_defn calls opt_var_decls");
   const GrammarRule *opt_var_decls = get_rule("opt_var_decls");
   if (!opt_var_decls->parse(opt_var_decls)) {
     report_error(rule->name, "unexpected token in opt_var_decls");
@@ -217,6 +242,7 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   }
 
   // Parse opt_stmt_list
+  debug("func_defn calls opt_stmt_list");
   const GrammarRule *opt_stmt_list = get_rule("opt_stmt_list");
   if (!opt_stmt_list->parse(opt_stmt_list)) {
     report_error(rule->name, "unexpected token in opt_stmt_list");
@@ -229,37 +255,61 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
     return false;
   }
 
+  popScope();
+
   return true;
 }
 
 bool parse_opt_formals_impl(const GrammarRule *rule) {
-  debug("parse_opt_formals_impl");
   const GrammarRule *opt_formals = get_rule("opt_formals");
 
   // Only parses if not epsilon and in first
-  if (opt_formals->isFirst(opt_formals, currentToken)) {
-    // Parse formals
-    const GrammarRule *formals = get_rule("formals");
-    if (!formals->parse(formals)) {
-      report_error(rule->name, "unexpected token in formals");
-      return false;
-    }
+  if (!opt_formals->isFirst(opt_formals, currentToken)) {
+    return true; // Epsilon
   }
 
-  return true; // Epsilon
+  // parse type
+  debug("opt_formals calls type");
+  const GrammarRule *type = get_rule("type");
+  if (!type->parse(type)) {
+    report_error(rule->name, "expected type token");
+    return false;
+  }
+
+  // parse ID
+  char *id = capture_identifier();
+  if (!add_symbol_check(id)) {
+    report_error(rule->name, "failed id symbol check");
+    return false;
+  }
+
+  // Parse formals
+  debug("opt_formals calls formals");
+  const GrammarRule *formals = get_rule("formals");
+  if (!formals->parse(formals)) {
+    report_error(rule->name, "failed to parse formals");
+    return false;
+  }
+
+  return true;
 }
 
 bool parse_formals_impl(const GrammarRule *rule) {
-  debug("parse_formals_impl");
   const GrammarRule *formals = get_rule("formals");
 
   // Check first
   if (!formals->isFirst(formals, currentToken)) {
-    report_error(rule->name, "unexpected token in formals");
+    return true; // Epsilon
+  }
+
+  // Parse COMMA
+  if (!match(TOKEN_COMMA)) {
+    report_error(rule->name, "expected a COMMA token");
     return false;
   }
 
   // Parse type
+  debug("formals calls type");
   const GrammarRule *type = get_rule("type");
   if (!type->parse(type)) {
     report_error(rule->name, "unexpected token in type");
@@ -268,32 +318,21 @@ bool parse_formals_impl(const GrammarRule *rule) {
 
   // Parse ID
   char *id = capture_identifier();
-  if (!id) {
-    report_error(rule->name, "expected identifier");
-    return false;
-  }
-
-  // Adding symbol
   if (!add_symbol_check(id)) {
-    report_error(rule->name, "adding symbol failed");
-    free(id);
+    report_error(rule->name, "failed to add id to symbol table");
     return false;
   }
 
-  // Parse optional comma
-  if (match(TOKEN_COMMA)) {
-    if (!formals->parse(formals)) {
-      report_error(rule->name, "unexpected token in formals");
-      free(id);
-      return false;
-    }
+  debug("formals calls formals");
+  if (!rule->parse(rule)) {
+    report_error(rule->name, "failed to parse formals");
+    return true;
   }
 
   return true;
 }
 
 bool parse_opt_var_decls_impl(const GrammarRule *rule) {
-  debug("parse_opt_var_decls_impl");
   const GrammarRule *opt_var_decls = get_rule("opt_var_decls");
 
   // check first
@@ -301,13 +340,23 @@ bool parse_opt_var_decls_impl(const GrammarRule *rule) {
     return true; // Epsilon
   }
 
-  // Parse var_decl (Need to do type first)
+  // parse type
+  debug("opt_var_decls calls type");
   const GrammarRule *type = get_rule("type");
   if (!type->parse(type)) {
     report_error(rule->name, "unexpected token in type");
     return false;
   }
 
+  // parse ID
+  char *id = capture_identifier();
+  if (!add_symbol_check(id)) {
+    report_error(rule->name, "failed to add id to symbol table");
+    return false;
+  }
+
+  // parse var_decl
+  debug("opt_var_decl calls var_decl");
   const GrammarRule *var_decl = get_rule("var_decl");
   if (!var_decl->parse(var_decl)) {
     report_error(rule->name, "unexpected token in var_decl");
@@ -315,7 +364,7 @@ bool parse_opt_var_decls_impl(const GrammarRule *rule) {
   }
 
   // Parse opt_var_decls
-  if (!opt_var_decls->parse(opt_var_decls)) {
+  if (!rule->parse(rule)) {
     report_error(rule->name, "unexpected token in opt_var_decls");
     return false;
   }
@@ -324,13 +373,12 @@ bool parse_opt_var_decls_impl(const GrammarRule *rule) {
 }
 
 bool parse_opt_stmt_list_impl(const GrammarRule *rule) {
-  debug("parse_opt_stmt_list_impl");
-  const GrammarRule *opt_stmt_list = get_rule("opt_stmt_list");
-  if (!opt_stmt_list->isFirst(opt_stmt_list, currentToken)) {
+  if (!rule->isFirst(rule, currentToken)) {
     return true; // Epsilon
   }
 
   // Parse stmt
+  debug("opt_stmt_list calls stmt");
   const GrammarRule *stmt = get_rule("stmt");
   if (!stmt->parse(stmt)) {
     report_error(rule->name, "unexpected token in stmt");
@@ -338,7 +386,7 @@ bool parse_opt_stmt_list_impl(const GrammarRule *rule) {
   }
 
   // Parse opt_stmt_list
-  if (!opt_stmt_list->parse(opt_stmt_list)) {
+  if (!rule->parse(rule)) {
     report_error(rule->name, "unexpected token in opt_stmt_list");
     return false;
   }
@@ -347,7 +395,6 @@ bool parse_opt_stmt_list_impl(const GrammarRule *rule) {
 }
 
 bool parse_stmt_impl(const GrammarRule *rule) {
-  debug("parse_stmt_impl");
   const GrammarRule *stmt = get_rule("stmt");
 
   // check first
@@ -356,11 +403,12 @@ bool parse_stmt_impl(const GrammarRule *rule) {
     return false;
   }
 
-  // Check fn_call
-  const GrammarRule *fn_call = get_rule("fn_call");
-  if (fn_call->isFirst(fn_call, currentToken)) {
-    if (!fn_call->parse(fn_call)) {
-      report_error(rule->name, "unexpected token in fn_call");
+  // Check assg_or_fn
+  if (currentToken.type == TOKEN_ID) {
+    const GrammarRule *assg_or_fn = get_rule("assg_or_fn");
+    debug("stmt calls assg_or_fn");
+    if (!assg_or_fn->parse(assg_or_fn)) {
+      report_error(rule->name, "failed to parse assg_or_fn");
       return false;
     }
     return true;
@@ -369,6 +417,7 @@ bool parse_stmt_impl(const GrammarRule *rule) {
   // Check while_stmt
   const GrammarRule *while_stmt = get_rule("while_stmt");
   if (while_stmt->isFirst(while_stmt, currentToken)) {
+    debug("stmt calls while_stmt");
     if (!while_stmt->parse(while_stmt)) {
       report_error(rule->name, "unexpected token in while_stmt");
       return false;
@@ -379,18 +428,9 @@ bool parse_stmt_impl(const GrammarRule *rule) {
   // Check if_stmt
   const GrammarRule *if_stmt = get_rule("if_stmt");
   if (if_stmt->isFirst(if_stmt, currentToken)) {
+    debug("stmt calls if_stmt");
     if (!if_stmt->parse(if_stmt)) {
       report_error(rule->name, "unexpected token in if_stmt");
-      return false;
-    }
-    return true;
-  }
-
-  // Check assg_stmt
-  const GrammarRule *assg_stmt = get_rule("assg_stmt");
-  if (assg_stmt->isFirst(assg_stmt, currentToken)) {
-    if (!assg_stmt->parse(assg_stmt)) {
-      report_error(rule->name, "unexpected token in assg_stmt");
       return false;
     }
     return true;
@@ -399,6 +439,7 @@ bool parse_stmt_impl(const GrammarRule *rule) {
   // Check return_stmt
   const GrammarRule *return_stmt = get_rule("return_stmt");
   if (return_stmt->isFirst(return_stmt, currentToken)) {
+    debug("stmt calls return_stmt");
     if (!return_stmt->parse(return_stmt)) {
       report_error(rule->name, "unexpected token in return_stmt");
       return false;
@@ -410,6 +451,7 @@ bool parse_stmt_impl(const GrammarRule *rule) {
   if (match(TOKEN_LBRACE)) {
     // Parse opt_stmt_list
     const GrammarRule *opt_stmt_list = get_rule("opt_stmt_list");
+    debug("stmt calls opt_stmt_list");
     if (!opt_stmt_list->parse(opt_stmt_list)) {
       report_error(rule->name, "unexpected token in opt_stmt_list");
       return false;
@@ -432,22 +474,38 @@ bool parse_stmt_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_fn_call_impl(const GrammarRule *rule) {
-  debug("parse_fn_call_impl");
-  const GrammarRule *fn_call = get_rule("fn_call");
-  if (!fn_call->isFirst(fn_call, currentToken)) {
-    report_error(rule->name, "unexpected token in fn_call");
+bool parse_assg_or_fn_impl(const GrammarRule *rule) {
+  TokenI lookahead_token = peekToken();
+
+  if (!rule->isFirst(rule, lookahead_token)) {
+    report_error(rule->name, "token not part of assg_or_fn first set");
     return false;
   }
 
+  if (lookahead_token.type == TOKEN_OPASSG) {
+    debug("assg_or_fn calls assg_stmt");
+    const GrammarRule *assg_stmt = get_rule("assg_stmt");
+    if (!assg_stmt->parse(assg_stmt)) {
+      report_error(rule->name, "failed to parse assg_stmt");
+      return false;
+    }
+  } else if (lookahead_token.type == TOKEN_LPAREN) {
+    debug("assg_or_fn calls fn_call");
+    const GrammarRule *fn_call = get_rule("fn_call");
+    if (!fn_call->parse(fn_call)) {
+      report_error(rule->name, "failed to parse fn_call");
+      return false;
+    }
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
+bool parse_fn_call_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
-  if (!id) {
-    report_error(rule->name, "unexpected token in id");
-    free(id);
-    return false;
-  }
-
   if (!lookup(id)) {
     report_error(rule->name, "ID does not exist");
     free(id);
@@ -532,37 +590,34 @@ bool parse_expr_list_impl(const GrammarRule *rule) {
 }
 
 bool parse_arith_exp_impl(const GrammarRule *rule) {
-  debug("parse_arith_exp_impl");
-  const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->isFirst(arith_exp, currentToken)) {
-    report_error(rule->name, "token not in arith_exp first");
+  if (!rule->isFirst(rule, currentToken)) {
+    report_error(rule->name, "token not in arith_exp first set");
     return false;
   }
 
   // Check for ID
   if (currentToken.type == TOKEN_ID) {
     char *id = capture_identifier();
+
     if (!lookup(id)) {
       report_error(rule->name, "ID does not exist");
       free(id);
       return false;
     }
     free(id);
-    return true;
-  }
 
-  if (!match(TOKEN_INTCON)) {
-    report_error(rule->name, "unexpected token in intcon");
-    return false;
+  } else {
+    if (!match(TOKEN_INTCON)) {
+      report_error(rule->name, "unexpected token in intcon");
+      return false;
+    }
   }
 
   return true;
 }
 
 bool parse_while_stmt_impl(const GrammarRule *rule) {
-  debug("parse_while_stmt_impl");
-  const GrammarRule *while_stmt = get_rule("while_stmt");
-  if (!while_stmt->isFirst(while_stmt, currentToken)) {
+  if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in while_stmt");
     return false;
   }
@@ -731,20 +786,8 @@ bool parse_relop_impl(const GrammarRule *rule) {
 }
 
 bool parse_assg_stmt_impl(const GrammarRule *rule) {
-  debug("parse_assg_stmt_impl");
-  const GrammarRule *assg_stmt = get_rule("assg_stmt");
-  if (!assg_stmt->isFirst(assg_stmt, currentToken)) {
-    report_error(rule->name, "unexpected token in assg_stmt");
-    return false;
-  }
-
   // Parse ID
   char *id = capture_identifier();
-  if (!id) {
-    report_error(rule->name, "expected identifier");
-    free(id);
-    return false;
-  }
 
   // Lookup
   if (!lookup(id)) {
@@ -779,9 +822,7 @@ bool parse_assg_stmt_impl(const GrammarRule *rule) {
 }
 
 bool parse_return_stmt_impl(const GrammarRule *rule) {
-  debug("parse_return_stmt_impl");
-  const GrammarRule *return_stmt = get_rule("return_stmt");
-  if (!return_stmt->isFirst(return_stmt, currentToken)) {
+  if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in return_stmt");
     return false;
   }
@@ -796,6 +837,7 @@ bool parse_return_stmt_impl(const GrammarRule *rule) {
   const GrammarRule *arith_exp = get_rule("arith_exp");
   if (arith_exp->isFirst(arith_exp, currentToken)) {
     // parse arith_exp
+    debug("return calls arith_exp");
     if (!arith_exp->parse(arith_exp)) {
       report_error(rule->name, "unexpected token in arith_exp");
       return false;
@@ -813,9 +855,8 @@ bool parse_return_stmt_impl(const GrammarRule *rule) {
 
 // Variable declaration
 bool parse_var_decl_impl(const GrammarRule *rule) {
-  debug("parse_var_decl_impl");
-
   // Parsing id list
+  debug("var_decl calls id_list");
   const GrammarRule *id_list = get_rule("id_list");
   if (!id_list->parse(id_list)) {
     return false;
@@ -827,15 +868,12 @@ bool parse_var_decl_impl(const GrammarRule *rule) {
     return false;
   }
 
-  advanceToken();
   return true;
 }
 
 // Type rule: type → 'int'
 bool parse_type_impl(const GrammarRule *rule) {
-  debug("parse_type_impl");
   if (currentToken.type == TOKEN_KWINT) {
-    currentType = "int";
     advanceToken();
     return true;
   }
@@ -846,40 +884,34 @@ bool parse_type_impl(const GrammarRule *rule) {
 
 // ID list rule: id_list → (',' ID)*
 bool parse_id_list_impl(const GrammarRule *rule) {
-  debug("parse_id_list_impl");
-  const GrammarRule *id_list = get_rule("id_list");
 
   // Check first
-  if (!id_list->isFirst(id_list, currentToken)) {
-    report_error(rule->name, "token not in id_list first");
+  if (!rule->isFirst(rule, currentToken)) {
+    return true; // Epsilon
+  }
+
+  // parse COMMA
+  if (!match(TOKEN_COMMA)) {
+    report_error(rule->name, "expected COMMA token");
     return false;
   }
 
   // parse ID
-  if (currentToken.type != TOKEN_ID) {
-    report_error(rule->name, "expected identifier after comma");
-    return false;
-  }
-
   char *id = capture_identifier();
-  if (!id) {
-    report_error(rule->name, "expected identifier");
+  if (!add_symbol_check(id)) {
+    report_error(rule->name, "token is ID but couldn't get name from lexeme");
+    free(id);
     return false;
-  }
-
-  add_symbol_check(id);
-
-  // Parse optional COMMA
-  if (match(TOKEN_COMMA)) {
-    // Parse id_list
-    if (!id_list->parse(id_list)) {
-      report_error(rule->name, "unexpected token in id_list");
-      free(id);
-      return false;
-    }
   }
 
   free(id);
+
+  debug("id_list calls id_list");
+  if (!rule->parse(rule)) {
+    report_error(rule->name, "failed to parse id_list");
+    return false;
+  }
+
   return true;
 }
 
@@ -889,13 +921,16 @@ void init_grammar_rules(void) {
 
   // FIRST sets
   const TokenType arith_exp_first[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType assg_stmt_first[] = {TOKEN_ID};
+  const TokenType assg_or_fn_first[] = {TOKEN_OPASSG, TOKEN_LPAREN};
+  const TokenType assg_stmt_first[] = {TOKEN_OPASSG};
   const TokenType bool_exp_first[] = {TOKEN_ID, TOKEN_INTCON};
+  const TokenType decl_or_func_first[] = {TOKEN_COMMA, TOKEN_LPAREN,
+                                          TOKEN_SEMI};
   const TokenType expr_list_first[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType fn_call_first[] = {TOKEN_ID};
-  const TokenType formals_first[] = {TOKEN_KWINT};
-  const TokenType func_defn_first[] = {TOKEN_KWINT};
-  const TokenType id_list_first[] = {TOKEN_ID};
+  const TokenType fn_call_first[] = {TOKEN_LPAREN};
+  const TokenType formals_first[] = {TOKEN_COMMA};
+  const TokenType func_defn_first[] = {TOKEN_LPAREN};
+  const TokenType id_list_first[] = {TOKEN_COMMA};
   const TokenType if_stmt_first[] = {TOKEN_KWIF};
   const TokenType opt_expr_list_first[] = {TOKEN_ID, TOKEN_INTCON};
   const TokenType opt_formals_first[] = {TOKEN_KWINT};
@@ -910,17 +945,21 @@ void init_grammar_rules(void) {
   const TokenType stmt_first[] = {TOKEN_ID,     TOKEN_KWIF, TOKEN_KWRETURN,
                                   TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE};
   const TokenType type_first[] = {TOKEN_KWINT};
-  const TokenType var_decl_first[] = {TOKEN_KWINT};
+  const TokenType var_decl_first[] = {TOKEN_COMMA, TOKEN_SEMI};
   const TokenType while_stmt_first[] = {TOKEN_KWWHILE};
 
   // FOLLOW sets
   const TokenType arith_exp_follow[] = {TOKEN_SEMI, TOKEN_OPEQ,  TOKEN_OPNE,
                                         TOKEN_OPLE, TOKEN_OPLT,  TOKEN_OPGE,
                                         TOKEN_OPGT, TOKEN_COMMA, TOKEN_RPAREN};
+  const TokenType assg_or_fn_follow[] = {
+      TOKEN_KWELSE, TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN,
+      TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
   const TokenType assg_stmt_follow[] = {
       TOKEN_KWELSE, TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN,
       TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
   const TokenType bool_exp_follow[] = {TOKEN_RPAREN};
+  const TokenType decl_or_func_follow[] = {TOKEN_KWINT, TOKEN_EOF};
   const TokenType expr_list_follow[] = {TOKEN_RPAREN};
   const TokenType fn_call_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
                                       TOKEN_KWRETURN, TOKEN_LBRACE, TOKEN_SEMI,
@@ -958,10 +997,14 @@ void init_grammar_rules(void) {
   create_rule("type", type_first, 1, type_follow, 1, parse_type_impl);
   create_rule("arith_exp", arith_exp_first, 2, arith_exp_follow, 9,
               parse_arith_exp_impl);
+  create_rule("assg_or_fn", assg_or_fn_first, 2, assg_or_fn_follow, 8,
+              parse_assg_or_fn_impl);
   create_rule("assg_stmt", assg_stmt_first, 1, assg_stmt_follow, 8,
               parse_assg_stmt_impl);
   create_rule("bool_exp", bool_exp_first, 2, bool_exp_follow, 1,
               parse_bool_exp_impl);
+  create_rule("decl_or_func", decl_or_func_first, 3, decl_or_func_follow, 0,
+              parse_decl_or_func_impl);
   create_rule("expr_list", expr_list_first, 2, expr_list_follow, 1,
               parse_expr_list_impl);
   create_rule("fn_call", fn_call_first, 1, fn_call_follow, 8,
