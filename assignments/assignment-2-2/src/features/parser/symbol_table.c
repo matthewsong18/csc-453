@@ -1,12 +1,13 @@
 #include "symbol_table.h"
+#include "grammar_rule.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-Symbol *lookup_symbol_in_table(const char *name) {
+Symbol *lookup_symbol_in_table(const char *name, const char *type) {
   const Scope *currentScopePtr = currentScope;
   while (currentScopePtr != NULL) {
-    Symbol *symbol = lookup_symbol_in_scope(name, currentScopePtr);
+    Symbol *symbol = lookup_symbol_in_scope(name, type, currentScopePtr);
     if (symbol != NULL) {
       return symbol;
     }
@@ -15,19 +16,24 @@ Symbol *lookup_symbol_in_table(const char *name) {
   return NULL;
 }
 
-Symbol *lookup_symbol_in_scope(const char *name, const Scope *scope) {
+Symbol *lookup_symbol_in_scope(const char *name, const char *type,
+                               const Scope *scope) {
   Symbol *symbol = scope->symbols;
   while (symbol != NULL) {
-    if (strcmp(symbol->name, name) == 0)
-      return symbol;
-    symbol = symbol->next;
+    if (strcmp(symbol->name, name) != 0) {
+      symbol = symbol->next;
+      continue;
+    }
+    if (strcmp(symbol->type, type) != 0) {
+      fprintf(stderr, "ERROR: symbol already declared");
+      exit(1);
+    }
+    return symbol;
   }
   return NULL;
 }
 
-// Add a new symbol to the given scope. Caller should have already checked
-// for duplicates.
-bool addSymbol(const char *name, Scope *scope, const char *type) {
+Symbol *create_symbol(const char *name) {
   Symbol *symbol = malloc(sizeof(Symbol));
   if (!symbol) {
     fprintf(stderr, "ERROR: memory allocation failure\n");
@@ -39,15 +45,67 @@ bool addSymbol(const char *name, Scope *scope, const char *type) {
     fprintf(stderr, "ERROR: memory allocation failure for symbolbol name\n");
     return false;
   }
+  symbol->type = NULL;
+  symbol->number_of_arguments = 0;
+  symbol->arguments = NULL;
+  symbol->next = NULL;
+
+  return symbol;
+}
+
+// Add a new symbol to the given scope. Caller should have already checked
+// for duplicates.
+bool add_symbol(const char *name, const char *type) {
+  Symbol *symbol = create_symbol(name);
+
   symbol->type = strdup(type);
   if (!symbol->type) {
     free(symbol->name);
     free(symbol);
-    fprintf(stderr, "ERROR: memory allocation failure for symbolbol type\n");
+    fprintf(stderr, "ERROR: memory allocation failure for symbol type\n");
     return false;
   }
-  symbol->next = scope->symbols;
-  scope->symbols = symbol;
+
+  symbol->next = currentScope->symbols;
+  currentScope->symbols = symbol;
+  return true;
+}
+
+bool add_function_symbol(const char *name) {
+  return add_symbol(name, "function");
+}
+
+bool add_variable_symbol(const char *name) {
+  return add_symbol(name, "variable");
+}
+
+bool add_function_formal(const char *name, const GrammarRule *rule) {
+  if (currentScope->parent == NULL) {
+    report_error(rule->name, "the current scope has no parents");
+    return false;
+  }
+
+  Symbol *function = currentScope->parent->symbols;
+  if (!function) {
+    report_error(rule->name, "the global scope had no symbols");
+    return false;
+  }
+
+  Symbol *argument_ptr = create_symbol(name);
+  if (argument_ptr == NULL) {
+    function->arguments = argument_ptr;
+    function->number_of_arguments = 1;
+    if (function->arguments == NULL) {
+      report_error(rule->name, "failed to add initial formal");
+      return false;
+    }
+    return true;
+  }
+  argument_ptr = create_symbol(name);
+  argument_ptr->next = function->arguments;
+  function->arguments = argument_ptr;
+  function->number_of_arguments = function->number_of_arguments + 1;
+
   return true;
 }
 

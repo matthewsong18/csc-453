@@ -32,39 +32,51 @@ bool parse_if_stmt_impl(const GrammarRule *rule);
 bool parse_assg_stmt_impl(const GrammarRule *rule);
 bool parse_return_stmt_impl(const GrammarRule *rule);
 bool parse_fn_call_impl(const GrammarRule *rule);
-bool parse_opt_expr_list_impl(const GrammarRule *rule);
-bool parse_expr_list_impl(const GrammarRule *rule);
+bool parse_opt_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
+bool parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
 bool parse_bool_exp_impl(const GrammarRule *rule);
-bool parse_arith_exp_impl(const GrammarRule *rule);
+bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol);
 bool parse_relop_impl(const GrammarRule *rule);
+
+void debug(char *source) {
+  if (DEBUG_ON) {
+    printf("%s\n", source);
+    fflush(stdout);
+  }
+}
 
 // Calls the symbol_table lookup function to search the entire table for the
 // symbol
-bool lookup(const char *name) {
+bool lookup(const char *name, const char *type) {
   if (!chk_decl_flag) {
     return true;
   }
 
-  return lookup_symbol_in_table(name);
+  Symbol *symbol = lookup_symbol_in_table(name, type);
+  if (symbol == NULL) {
+    return false;
+  }
+
+  return true;
 }
 
 // Helper function to create and store a symbol
-bool add_symbol_check(const char *name) {
+bool add_symbol_check(const char *name, const char *type) {
   if (!chk_decl_flag)
     return true;
 
-  if (lookup_symbol_in_table(name)) {
+  if (lookup(name, type)) {
     fprintf(stderr, "ERROR: LINE %d: duplicate %s declaration\n",
             currentToken.line, name);
     return false;
   }
 
-  const bool isFunction = currentScope->parent != NULL;
-
-  if (isFunction) {
-    return addSymbol(name, currentScope, "function");
+  if (strcmp(type, "function") == 0) {
+    debug("added function symbol");
+    return add_function_symbol(name);
   } else {
-    return addSymbol(name, currentScope, "variable");
+    debug("added variable symbol");
+    return add_variable_symbol(name);
   }
 }
 
@@ -83,13 +95,6 @@ char *capture_identifier() {
 
   advanceToken();
   return id;
-}
-
-void debug(char *source) {
-  if (DEBUG_ON) {
-    printf("%s\n", source);
-    fflush(stdout);
-  }
 }
 
 // Implementation of all parse functions
@@ -148,12 +153,12 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
   }
 
   char *id_name = capture_identifier();
-  if (add_symbol_check(id_name) == false) {
-    report_error(rule->name, "failed to add variable id to symbol table");
-    return false;
-  }
   // Check var_decl rule
   if (lookahead_token.type == TOKEN_COMMA) {
+    if (add_symbol_check(id_name, "variable") == false) {
+      report_error(rule->name, "failed to add variable id to symbol table");
+      return false;
+    }
     // Call var_decl
     debug("decl_or_func calls var_decl");
     const GrammarRule *var_decl = get_rule("var_decl");
@@ -164,6 +169,10 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
   }
 
   else if (lookahead_token.type == TOKEN_LPAREN) {
+    if (add_symbol_check(id_name, "function") == false) {
+      report_error(rule->name, "failed to add variable id to symbol table");
+      return false;
+    }
     // Call func_defn
     debug("decl_or_func calls func_defn");
     const GrammarRule *func_defn = get_rule("func_defn");
@@ -175,6 +184,10 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
 
   else {
     // This case exists for when only a single variable is defined
+    if (add_symbol_check(id_name, "variable") == false) {
+      report_error(rule->name, "failed to add variable id to symbol table");
+      return false;
+    }
     if (!match(TOKEN_SEMI)) {
       report_error(rule->name,
                    "token didn't match decl or function grammar rules");
@@ -261,8 +274,12 @@ bool parse_opt_formals_impl(const GrammarRule *rule) {
 
   // parse ID
   char *id = capture_identifier();
-  if (!add_symbol_check(id)) {
-    report_error(rule->name, "failed id symbol check");
+  if (!add_function_formal(id, rule)) {
+    report_error(rule->name, "failed to add formal to function");
+    return false;
+  }
+  if (!add_symbol_check(id, "variable")) {
+    report_error(rule->name, "failed to add formal to symbol table");
     return false;
   }
 
@@ -301,8 +318,12 @@ bool parse_formals_impl(const GrammarRule *rule) {
 
   // Parse ID
   char *id = capture_identifier();
-  if (!add_symbol_check(id)) {
-    report_error(rule->name, "failed to add id to symbol table");
+  if (!add_function_formal(id, rule)) {
+    report_error(rule->name, "failed to add formal to function");
+    return false;
+  }
+  if (!add_symbol_check(id, "variable")) {
+    report_error(rule->name, "failed to add formal to symbol table");
     return false;
   }
 
@@ -333,7 +354,7 @@ bool parse_opt_var_decls_impl(const GrammarRule *rule) {
 
   // parse ID
   char *id = capture_identifier();
-  if (!add_symbol_check(id)) {
+  if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "failed to add id to symbol table");
     return false;
   }
@@ -489,7 +510,8 @@ bool parse_assg_or_fn_impl(const GrammarRule *rule) {
 bool parse_fn_call_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
-  if (!lookup(id)) {
+  Symbol *function_symbol = lookup_symbol_in_table(id, "function");
+  if (!function_symbol) {
     report_error(rule->name, "ID does not exist");
     free(id);
     return false;
@@ -501,13 +523,22 @@ bool parse_fn_call_impl(const GrammarRule *rule) {
     free(id);
   }
 
+  int number_of_arguments = function_symbol->number_of_arguments;
+
   // Parse opt_expr_list
+  debug("fn_call calls opt_expr_list");
   const GrammarRule *opt_expr_list = get_rule("opt_expr_list");
-  if (!opt_expr_list->parse(opt_expr_list)) {
+  if (!opt_expr_list->parseEx(opt_expr_list, function_symbol)) {
     report_error(rule->name, "unexpected token in opt_expr_list");
     free(id);
     return false;
   }
+
+  if (function_symbol->number_of_arguments != 0) {
+    report_error(rule->name, "wrong number of arguments provided");
+  }
+
+  function_symbol->number_of_arguments = number_of_arguments;
 
   // Parse RPAREN
   if (!match(TOKEN_RPAREN)) {
@@ -526,17 +557,17 @@ bool parse_fn_call_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_opt_expr_list_impl(const GrammarRule *rule) {
-  debug("parse_opt_expr_list_impl");
-  const GrammarRule *opt_expr_list = get_rule("opt_expr_list");
+bool parse_opt_expr_list_impl(const GrammarRule *rule,
+                              Symbol *function_symbol) {
 
-  if (!opt_expr_list->isFirst(opt_expr_list, currentToken)) {
+  if (!rule->isFirst(rule, currentToken)) {
     return true; // Epsilon
   }
 
   // Parse expr_list
+  debug("opt_expr_list calls expr_list");
   const GrammarRule *expr_list = get_rule("expr_list");
-  if (!expr_list->parse(expr_list)) {
+  if (!expr_list->parseEx(expr_list, function_symbol)) {
     report_error(rule->name, "unexpected token in expr_list");
     return false;
   }
@@ -544,17 +575,16 @@ bool parse_opt_expr_list_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_expr_list_impl(const GrammarRule *rule) {
-  debug("parse_expr_list_impl");
-  const GrammarRule *expr_list = get_rule("expr_list");
-  if (!expr_list->isFirst(expr_list, currentToken)) {
+bool parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol) {
+  if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in expr_list");
     return false;
   }
 
   // Parse arith_exp
+  debug("expr_list calls arith_exp");
   const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->parse(arith_exp)) {
+  if (!arith_exp->parseEx(arith_exp, function_symbol)) {
     report_error(rule->name, "unexpected token in arith_exp");
     return false;
   }
@@ -562,7 +592,7 @@ bool parse_expr_list_impl(const GrammarRule *rule) {
   // Parse optional COMMA
   if (match(TOKEN_COMMA)) {
     // Parse expr_list
-    if (!expr_list->parse(expr_list)) {
+    if (!rule->parseEx(rule, function_symbol)) {
       report_error(rule->name, "unexpected token in expr_list");
       return false;
     }
@@ -572,7 +602,7 @@ bool parse_expr_list_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_arith_exp_impl(const GrammarRule *rule) {
+bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "token not in arith_exp first set");
     return false;
@@ -582,10 +612,35 @@ bool parse_arith_exp_impl(const GrammarRule *rule) {
   if (currentToken.type == TOKEN_ID) {
     char *id = capture_identifier();
 
-    if (!lookup(id)) {
-      report_error(rule->name, "ID does not exist");
-      free(id);
-      return false;
+    if (function_symbol) {
+      Symbol *formal = function_symbol->arguments;
+      bool found = false;
+      while (formal != NULL) {
+        if (strcmp(formal->name, id) == 0) {
+          int number_of_args = function_symbol->number_of_arguments;
+          printf("%d\n", number_of_args);
+          fflush(stdout);
+          if (number_of_args <= 0) {
+            report_error(rule->name, "wrong number of arguments provided");
+            return false;
+          }
+          found = true;
+          function_symbol->number_of_arguments = number_of_args - 1;
+        }
+        formal = formal->next;
+      }
+
+      if (!found) {
+        report_error(rule->name, "could not find id in function's formals");
+        free(id);
+        return false;
+      }
+    } else {
+      // Not using function_symbol
+      if (!lookup(id, "variable")) {
+        report_error(rule->name, "could not find ID in symbol table");
+        return false;
+      }
     }
     free(id);
 
@@ -641,7 +696,6 @@ bool parse_while_stmt_impl(const GrammarRule *rule) {
 }
 
 bool parse_if_stmt_impl(const GrammarRule *rule) {
-  debug("parse_if_stmt_impl");
   const GrammarRule *if_stmt = get_rule("if_stmt");
 
   // Check first
@@ -663,6 +717,7 @@ bool parse_if_stmt_impl(const GrammarRule *rule) {
   }
 
   // Parse bool_exp
+  debug("if_stmt calls bool_exp");
   const GrammarRule *bool_exp = get_rule("bool_exp");
   if (!bool_exp->parse(bool_exp)) {
     report_error(rule->name, "unexpected token in bool_exp");
@@ -694,17 +749,15 @@ bool parse_if_stmt_impl(const GrammarRule *rule) {
 }
 
 bool parse_bool_exp_impl(const GrammarRule *rule) {
-  debug("parse_bool_exp_impl");
-  const GrammarRule *bool_exp = get_rule("bool_exp");
   // Check first
-  if (!bool_exp->isFirst(bool_exp, currentToken)) {
+  if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in bool_exp");
     return false;
   }
 
   // Parse arith_exp
   const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->parse(arith_exp)) {
+  if (!arith_exp->parseEx(arith_exp, NULL)) {
     report_error(rule->name, "unexpected token in arith_exp");
     return false;
   }
@@ -773,7 +826,7 @@ bool parse_assg_stmt_impl(const GrammarRule *rule) {
   char *id = capture_identifier();
 
   // Lookup
-  if (!lookup(id)) {
+  if (!lookup(id, "variable")) {
     report_error(rule->name, "ID does not exist");
     free(id);
     return false;
@@ -821,7 +874,7 @@ bool parse_return_stmt_impl(const GrammarRule *rule) {
   if (arith_exp->isFirst(arith_exp, currentToken)) {
     // parse arith_exp
     debug("return calls arith_exp");
-    if (!arith_exp->parse(arith_exp)) {
+    if (!arith_exp->parseEx(arith_exp, NULL)) {
       report_error(rule->name, "unexpected token in arith_exp");
       return false;
     }
@@ -881,7 +934,7 @@ bool parse_id_list_impl(const GrammarRule *rule) {
 
   // parse ID
   char *id = capture_identifier();
-  if (!add_symbol_check(id)) {
+  if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "token is ID but couldn't get name from lexeme");
     free(id);
     return false;
@@ -976,44 +1029,45 @@ void init_grammar_rules(void) {
       TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
 
   // Create rules with their parsing functions
-  create_rule("prog", prog_first, 1, prog_follow, 1, parse_prog_impl);
-  create_rule("type", type_first, 1, type_follow, 1, parse_type_impl);
+  create_rule("prog", prog_first, 1, prog_follow, 1, parse_prog_impl, false);
+  create_rule("type", type_first, 1, type_follow, 1, parse_type_impl, false);
   create_rule("arith_exp", arith_exp_first, 2, arith_exp_follow, 9,
-              parse_arith_exp_impl);
+              parse_arith_exp_impl, true);
   create_rule("assg_or_fn", assg_or_fn_first, 2, assg_or_fn_follow, 8,
-              parse_assg_or_fn_impl);
+              parse_assg_or_fn_impl, false);
   create_rule("assg_stmt", assg_stmt_first, 1, assg_stmt_follow, 8,
-              parse_assg_stmt_impl);
+              parse_assg_stmt_impl, false);
   create_rule("bool_exp", bool_exp_first, 2, bool_exp_follow, 1,
-              parse_bool_exp_impl);
+              parse_bool_exp_impl, false);
   create_rule("decl_or_func", decl_or_func_first, 3, decl_or_func_follow, 0,
-              parse_decl_or_func_impl);
+              parse_decl_or_func_impl, false);
   create_rule("expr_list", expr_list_first, 2, expr_list_follow, 1,
-              parse_expr_list_impl);
+              parse_expr_list_impl, true);
   create_rule("fn_call", fn_call_first, 1, fn_call_follow, 8,
-              parse_fn_call_impl);
+              parse_fn_call_impl, false);
   create_rule("formals", formals_first, 1, formals_follow, 1,
-              parse_formals_impl);
+              parse_formals_impl, false);
   create_rule("func_defn", func_defn_first, 1, func_defn_follow, 2,
-              parse_func_defn_impl);
+              parse_func_defn_impl, false);
   create_rule("id_list", id_list_first, 1, id_list_follow, 1,
-              parse_id_list_impl);
+              parse_id_list_impl, false);
   create_rule("if_stmt", if_stmt_first, 1, if_stmt_follow, 8,
-              parse_if_stmt_impl);
+              parse_if_stmt_impl, false);
   create_rule("opt_expr_list", opt_expr_list_first, 2, opt_expr_list_follow, 1,
-              parse_opt_expr_list_impl);
+              parse_opt_expr_list_impl, true);
   create_rule("opt_formals", opt_formals_first, 1, opt_formals_follow, 1,
-              parse_opt_formals_impl);
+              parse_opt_formals_impl, false);
   create_rule("opt_stmt_list", opt_stmt_list_first, 6, opt_stmt_list_follow, 1,
-              parse_opt_stmt_list_impl);
+              parse_opt_stmt_list_impl, false);
   create_rule("opt_var_decls", opt_var_decl_first, 1, opt_var_decls_follow, 7,
-              parse_opt_var_decls_impl);
-  create_rule("relop", relop_first, 6, relop_follow, 2, parse_relop_impl);
+              parse_opt_var_decls_impl, false);
+  create_rule("relop", relop_first, 6, relop_follow, 2, parse_relop_impl,
+              false);
   create_rule("return_stmt", return_stmt_first, 1, return_stmt_follow, 8,
-              parse_return_stmt_impl);
-  create_rule("stmt", stmt_first, 6, stmt_follow, 8, parse_stmt_impl);
+              parse_return_stmt_impl, false);
+  create_rule("stmt", stmt_first, 6, stmt_follow, 8, parse_stmt_impl, false);
   create_rule("var_decl", var_decl_first, 1, var_decl_follow, 9,
-              parse_var_decl_impl);
+              parse_var_decl_impl, false);
   create_rule("while_stmt", while_stmt_first, 1, while_stmt_follow, 8,
-              parse_while_stmt_impl);
+              parse_while_stmt_impl, false);
 }

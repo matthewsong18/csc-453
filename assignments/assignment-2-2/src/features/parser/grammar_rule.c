@@ -30,8 +30,9 @@ bool is_follow_impl(const GrammarRule *rule, const TokenI token) {
 
 // Function to report parsing errors with context
 void report_error(const char *ruleName, const char *message) {
-  fprintf(stderr, "ERROR: LINE %d: %s in rule '%s' and current token '%d:%s'\n", currentToken.line,
-          message, ruleName, currentToken.type, currentToken.lexeme);
+  fprintf(stderr, "ERROR: LINE %d: %s in rule '%s' and current token '%d:%s'\n",
+          currentToken.line, message, ruleName, currentToken.type,
+          currentToken.lexeme);
 }
 
 // Helper function to allocate a token set
@@ -54,7 +55,8 @@ static TokenType *allocate_token_set(const TokenType *sourceSet,
 }
 
 // Helper function to initialize a rule structure
-static GrammarRule *initialize_rule(const char *name, const ParseFn parseFn) {
+static GrammarRule *initialize_rule(const char *name, void *parseFn,
+                                    bool hasExtraArg) {
   GrammarRule *rule = malloc(sizeof(GrammarRule));
   if (!rule) {
     fprintf(stderr, "ERROR: memory allocation failure for grammar rule\n");
@@ -64,7 +66,11 @@ static GrammarRule *initialize_rule(const char *name, const ParseFn parseFn) {
   // Initialize function pointers
   rule->isFirst = is_first_impl;
   rule->isFollow = is_follow_impl;
-  rule->parse = parseFn;
+  if (hasExtraArg) {
+    rule->parseEx = parseFn;
+  } else {
+    rule->parse = parseFn;
+  }
 
   // Initialize name
   rule->name = strdup(name);
@@ -115,9 +121,10 @@ static void cleanup_rule(GrammarRule *rule) {
 // Function to create and initialize a grammar rule
 GrammarRule *create_rule(const char *name, const TokenType *firstSet,
                          const int firstCount, const TokenType *followSet,
-                         const int followCount, const ParseFn parseFn) {
+                         const int followCount, void *parseFn,
+                         bool hasExtraArg) {
   // Initialize the basic rule structure
-  GrammarRule *rule = initialize_rule(name, parseFn);
+  GrammarRule *rule = initialize_rule(name, parseFn, hasExtraArg);
   if (!rule)
     return NULL;
 

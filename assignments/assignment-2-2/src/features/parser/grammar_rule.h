@@ -11,12 +11,20 @@ typedef struct GrammarRule GrammarRule;
 // Define function pointer types for clarity
 typedef bool (*IsSetFn)(const GrammarRule *rule, TokenI token);
 typedef bool (*ParseFn)(const GrammarRule *rule);
+typedef bool (*ParseFnExtra)(const GrammarRule *rule, void *extra);
 
 struct GrammarRule {
   // Function pointers
   IsSetFn isFirst;  // Function to check if token is in FIRST set
   IsSetFn isFollow; // Function to check if token is in FOLLOW set
-  ParseFn parse;    // Function to parse this rule
+
+  // Needed an extra argument for some parsing so I made this union so that
+  // I could swap which function type I'm using without having to change
+  // everything
+  union {
+    ParseFn parse;        // Function to parse this rule
+    ParseFnExtra parseEx; // Function to parse this rule with an extra argument
+  };
 
   // Data for FIRST and FOLLOW sets
   TokenType *firstSet;  // Array of token types in FIRST set
@@ -30,7 +38,7 @@ struct GrammarRule {
 // Function to create and initialize a grammar rule
 GrammarRule *create_rule(const char *name, const TokenType *firstSet,
                          int firstCount, const TokenType *followSet,
-                         int followCount, ParseFn parseFn);
+                         int followCount, void *parseFn, bool hasExtraArg);
 
 // Implementation of FIRST and FOLLOW checking
 bool is_first_impl(const GrammarRule *rule, TokenI token);
