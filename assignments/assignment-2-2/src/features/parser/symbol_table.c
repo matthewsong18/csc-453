@@ -3,24 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-Symbol *lookupSymbol(const char *name, const Scope *scope) {
+Symbol *lookup_symbol_in_table(const char *name) {
+  const Scope *currentScopePtr = currentScope;
+  while (currentScopePtr != NULL) {
+    Symbol *symbol = lookup_symbol_in_scope(name, currentScopePtr);
+    if (symbol != NULL) {
+      return symbol;
+    }
+    currentScopePtr = currentScopePtr->parent;
+  }
+  return NULL;
+}
+
+Symbol *lookup_symbol_in_scope(const char *name, const Scope *scope) {
   Symbol *symbol = scope->symbols;
   while (symbol != NULL) {
     if (strcmp(symbol->name, name) == 0)
       return symbol;
     symbol = symbol->next;
-  }
-  return NULL;
-}
-
-Symbol *lookupSymbolInScope(const char *name, const Scope *scope) {
-  const Scope *currentScopePtr = scope;
-  while (currentScopePtr != NULL) {
-    Symbol *symbol = lookupSymbol(name, currentScopePtr);
-    if (symbol != NULL) {
-      return symbol;
-    }
-    currentScopePtr = currentScopePtr->parent;
   }
   return NULL;
 }

@@ -19,8 +19,8 @@ typedef struct Scope {
 extern Scope *globalScope;
 extern Scope *currentScope;
 
-Symbol *lookupSymbol(const char *name, const Scope *scope);
-Symbol *lookupSymbolInScope(const char *name, const Scope *scope);
+Symbol *lookup_symbol_in_scope(const char *name, const Scope *scope);
+Symbol *lookup_symbol_in_table(const char *name);
 bool addSymbol(const char *name, Scope *scope, const char *type);
 void pushScope(void);
 void popScope(void);

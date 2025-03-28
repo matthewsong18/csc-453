@@ -11,7 +11,7 @@
 extern int chk_decl_flag;
 
 // Debug flag
-bool DEBUG_ON = true;
+bool DEBUG_ON = false;
 
 // Forward declarations for all parse functions
 bool assg_or_fn_impl(const GrammarRule *rule);
@@ -38,16 +38,14 @@ bool parse_bool_exp_impl(const GrammarRule *rule);
 bool parse_arith_exp_impl(const GrammarRule *rule);
 bool parse_relop_impl(const GrammarRule *rule);
 
+// Calls the symbol_table lookup function to search the entire table for the
+// symbol
 bool lookup(const char *name) {
   if (!chk_decl_flag) {
     return true;
   }
 
-  if (!lookupSymbolInScope(name, currentScope)) {
-    return false;
-  }
-
-  return true;
+  return lookup_symbol_in_table(name);
 }
 
 // Helper function to create and store a symbol
@@ -55,7 +53,7 @@ bool add_symbol_check(const char *name) {
   if (!chk_decl_flag)
     return true;
 
-  if (lookup(name)) {
+  if (lookup_symbol_in_table(name)) {
     fprintf(stderr, "ERROR: LINE %d: duplicate %s declaration\n",
             currentToken.line, name);
     return false;
@@ -149,15 +147,13 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
     return false;
   }
 
+  char *id_name = capture_identifier();
+  if (add_symbol_check(id_name) == false) {
+    report_error(rule->name, "failed to add variable id to symbol table");
+    return false;
+  }
   // Check var_decl rule
   if (lookahead_token.type == TOKEN_COMMA) {
-    // Add ID to symbol table
-    char *id_name = capture_identifier();
-    if (add_symbol_check(id_name) == false) {
-      report_error(rule->name, "failed to add variable id to symbol table");
-      return false;
-    }
-
     // Call var_decl
     debug("decl_or_func calls var_decl");
     const GrammarRule *var_decl = get_rule("var_decl");
@@ -168,13 +164,6 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
   }
 
   else if (lookahead_token.type == TOKEN_LPAREN) {
-    // Add ID to symbol table
-    char *id_name = capture_identifier();
-    if (add_symbol_check(id_name) == false) {
-      report_error(rule->name, "failed to add function id to symbol table");
-      return false;
-    }
-
     // Call func_defn
     debug("decl_or_func calls func_defn");
     const GrammarRule *func_defn = get_rule("func_defn");
@@ -185,13 +174,7 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
   }
 
   else {
-    // Because match() only checks the current_token and we did a lookahead,
-    // causing us to be one ahead of the current_token, we need to advance
-    // the token to catch up the current_token. The only reason why the other
-    // two rules needed a lookahead is because the current token is the ID.
-    // Depending on which rule is chosen, the scope where the function gets
-    // saved on the symbol table will change.
-    advanceToken();
+    // This case exists for when only a single variable is defined
     if (!match(TOKEN_SEMI)) {
       report_error(rule->name,
                    "token didn't match decl or function grammar rules");

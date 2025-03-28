@@ -6,9 +6,5 @@
   the name exists, irrelevant of whether the name is for a function or variable,
   should the check fail?
 
-- Add a local scope when a function defn starts
-
-- Switch back to global scope when a function defn ends
-
-- Check whether the local scope is supposed to be dropped when the func_defn
-  ends
+- Change lookup to just look through the linked list then check parent linked
+  lists automatically in one function
