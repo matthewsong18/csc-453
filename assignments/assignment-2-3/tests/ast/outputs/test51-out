@@ -1,0 +1,17 @@
+func_def: f
+  formals: x, y
+  body:
+    {
+        f(0, 1)
+    }
+/* func_def: f */
+
+func_def: g
+  formals: 
+  body:
+    {
+        f(y, x)
+    }
+/* func_def: g */
+
+exit status: 0

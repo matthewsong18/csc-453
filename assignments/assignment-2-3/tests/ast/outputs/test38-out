@@ -1,0 +1,48 @@
+func_def: f
+  formals: x
+  body:
+    {
+        if (x > 0):
+        then:
+            {
+            }
+        else:
+        end_if
+    }
+/* func_def: f */
+
+func_def: g
+  formals: x
+  body:
+    {
+        if (x > 0):
+        then:
+            {
+            }
+        else:
+            {
+            }
+        end_if
+    }
+/* func_def: g */
+
+func_def: h
+  formals: x
+  body:
+    {
+        {
+            {
+                if (x > 0):
+                then:
+                    {
+                    }
+                else:
+                    {
+                    }
+                end_if
+            }
+        }
+    }
+/* func_def: h */
+
+exit status: 0

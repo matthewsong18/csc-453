@@ -1,16 +1,22 @@
 import subprocess
 import glob
+import os
 
-# Get all test and error files in the current directory
-files = sorted(glob.glob("err[0-9]*") + glob.glob("test[0-9]*"))
+# Get all test files in the current directory
+files = sorted(glob.glob("test[0-9]*"))
 
 for file in files:
-    expected_exit_code = 1 if file.startswith("err") else 0  # errXX -> 1, testXX -> 0
+    expected_exit_code = 0  # All tests should exit with 0
+    output_file = f"outputs/{file}-out"
 
     try:
-        # Read file content
+        # Read test input
         with open(file, "r") as f:
             input_data = f.read()
+
+        # Read expected output
+        with open(output_file, "r") as f:
+            expected_output = f.read().strip()
 
         # Run the program
         process = subprocess.run(
@@ -21,13 +27,23 @@ for file in files:
         )
 
         exit_code = process.returncode
+        actual_output = process.stdout.strip()
 
-        # Print only if the test fails
+        # Check exit code
         if exit_code != expected_exit_code:
-            print(f"FAILED: {file} (Expected {expected_exit_code}, got {exit_code})")
+            print(
+                f"FAILED: {file} (Expected exit {expected_exit_code}, got {exit_code})"
+            )
+            continue  # Skip output comparison if exit code is wrong
 
-    except FileNotFoundError:
-        print(f"ERROR: {file} not found")
+        # Compare output
+        if actual_output != expected_output:
+            print(f"FAILED: {file} - Output mismatch\n")
+            print(f"Expected:\n{expected_output}\n")
+            print(f"Got:\n{actual_output}\n")
+
+    except FileNotFoundError as e:
+        print(f"ERROR: {e}")
 
     except subprocess.CalledProcessError as e:
         print(f"ERROR: {file} - Process failed: {e}")

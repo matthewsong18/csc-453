@@ -1,6 +1,7 @@
 // parser_rules.c
 #include "./grammar_rule.h"
 #include "./symbol_table.h"
+#include "ast.h"
 #include "token_service.h"
 #include <stdbool.h>
 #include <stdio.h>
@@ -15,30 +16,29 @@ extern int print_ast_flag;
 bool DEBUG_ON = false;
 
 // Forward declarations for all parse functions
-ASTnode parse_assg_or_fn_impl(const GrammarRule *rule);
-ASTnode parse_prog_impl(const GrammarRule *rule);
-ASTnode parse_func_defn_impl(const GrammarRule *rule);
-ASTnode parse_decl_or_func_impl(const GrammarRule *rule);
-ASTnode parse_var_decl_impl(const GrammarRule *rule);
-ASTnode parse_type_impl(const GrammarRule *rule);
-ASTnode parse_id_list_impl(const GrammarRule *rule);
-ASTnode parse_func_defn_rest_impl(const GrammarRule *rule);
-ASTnode parse_opt_formals_impl(const GrammarRule *rule);
-ASTnode parse_formals_impl(const GrammarRule *rule);
-ASTnode parse_opt_var_decls_impl(const GrammarRule *rule);
-ASTnode parse_opt_stmt_list_impl(const GrammarRule *rule);
-ASTnode parse_stmt_impl(const GrammarRule *rule);
-ASTnode parse_while_stmt_impl(const GrammarRule *rule);
-ASTnode parse_if_stmt_impl(const GrammarRule *rule);
-ASTnode parse_assg_stmt_impl(const GrammarRule *rule);
-ASTnode parse_return_stmt_impl(const GrammarRule *rule);
-ASTnode parse_fn_call_impl(const GrammarRule *rule);
-ASTnode parse_opt_expr_list_impl(const GrammarRule *rule,
-                                 Symbol *function_symbol);
-ASTnode parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
-ASTnode parse_bool_exp_impl(const GrammarRule *rule);
-ASTnode parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol);
-ASTnode parse_relop_impl(const GrammarRule *rule);
+ASTnode *parse_assg_or_fn_impl(const GrammarRule *rule);
+ASTnode *parse_prog_impl(const GrammarRule *rule);
+ASTnode *parse_func_defn_impl(const GrammarRule *rule);
+ASTnode *parse_decl_or_func_impl(const GrammarRule *rule);
+ASTnode *parse_var_decl_impl(const GrammarRule *rule);
+ASTnode *parse_type_impl(const GrammarRule *rule);
+ASTnode *parse_id_list_impl(const GrammarRule *rule);
+ASTnode *parse_opt_formals_impl(const GrammarRule *rule);
+ASTnode *parse_formals_impl(const GrammarRule *rule);
+ASTnode *parse_opt_var_decls_impl(const GrammarRule *rule);
+ASTnode *parse_opt_stmt_list_impl(const GrammarRule *rule);
+ASTnode *parse_stmt_impl(const GrammarRule *rule);
+ASTnode *parse_while_stmt_impl(const GrammarRule *rule);
+ASTnode *parse_if_stmt_impl(const GrammarRule *rule);
+ASTnode *parse_assg_stmt_impl(const GrammarRule *rule);
+ASTnode *parse_return_stmt_impl(const GrammarRule *rule);
+ASTnode *parse_fn_call_impl(const GrammarRule *rule);
+ASTnode *parse_opt_expr_list_impl(const GrammarRule *rule,
+                                  Symbol *function_symbol);
+ASTnode *parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
+ASTnode *parse_bool_exp_impl(const GrammarRule *rule);
+ASTnode *parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol);
+ASTnode *parse_relop_impl(const GrammarRule *rule);
 
 void debug(char *source) {
   if (DEBUG_ON) {
@@ -56,7 +56,7 @@ bool lookup(const char *name, const char *type) {
 
   Symbol *symbol = lookup_symbol_in_table(name, type);
   if (symbol == NULL) {
-    return false;
+    return NULL;
   }
 
   return true;
@@ -86,13 +86,13 @@ bool add_symbol_check(const char *name, const char *type) {
 char *capture_identifier() {
   if (currentToken.type != TOKEN_ID) {
     fprintf(stderr, "ERROR: LINE %d: expected identifier\n", currentToken.line);
-    return NULL;
+    exit(1);
   }
 
   char *id = strdup(currentToken.lexeme);
   if (!id) {
     fprintf(stderr, "ERROR: memory allocation failure\n");
-    return NULL;
+    exit(1);
   }
 
   advanceToken();
@@ -102,7 +102,7 @@ char *capture_identifier() {
 // Implementation of all parse functions
 
 // Program rule:
-ASTnode parse_prog_impl(const GrammarRule *rule) {
+ASTnode *parse_prog_impl(const GrammarRule *rule) {
   debug("parse_prog_impl");
   // Check first
   while (rule->isFirst(rule, currentToken)) {
@@ -111,28 +111,23 @@ ASTnode parse_prog_impl(const GrammarRule *rule) {
     // Parsing type
     debug("prog calls type");
     const GrammarRule *type_rule = get_rule("type");
-    if (!type_rule->parse(type_rule)) {
-      report_error(rule->name, "expected a type");
-      return false;
-    }
+    type_rule->parse(type_rule);
 
     // Because we don't know whether the following rule will be a var_decl or
     // func_defn at this point, we don't want to use match(), because match()
     // will advance the token and leave us no way to access the current ID
     // unless we save it globally. We need to postpone the ID so we can save it
     // on the right scope in the symbol table.
+    debug("prog checks ID");
     if (!type_rule->isFollow(type_rule, currentToken)) {
       report_error(rule->name, "expected ID after type");
-      return false;
+      exit(1);
     }
 
     // Call decl_or_func rule
     debug("prog calls decl_or_func");
     const GrammarRule *decl_or_func = get_rule("decl_or_func");
-    if (!decl_or_func->parse(decl_or_func)) {
-      report_error(rule->name, "failed to parse decl_or_func");
-      return false;
-    }
+    decl_or_func->parse(decl_or_func);
   }
 
   // Check follow even if first is not matched because of epsilon
@@ -140,19 +135,19 @@ ASTnode parse_prog_impl(const GrammarRule *rule) {
   debug("prog checking for EOF");
   if (!rule->isFollow(rule, currentToken)) {
     report_error(rule->name, "unexpected follow token");
-    return false;
+    exit(1);
   }
 
-  return true;
+  return NULL;
 }
 
-ASTnode parse_decl_or_func_impl(const GrammarRule *rule) {
+ASTnode *parse_decl_or_func_impl(const GrammarRule *rule) {
 
   TokenI lookahead_token = peekToken();
   // Check next token is in FIRST set
   if (!rule->isFirst(rule, lookahead_token)) {
     report_error(rule->name, "lookahead token does not match first set");
-    return false;
+    exit(1);
   }
 
   char *id_name = capture_identifier();
@@ -160,52 +155,53 @@ ASTnode parse_decl_or_func_impl(const GrammarRule *rule) {
   if (lookahead_token.type == TOKEN_COMMA) {
     if (add_symbol_check(id_name, "variable") == false) {
       report_error(rule->name, "failed to add variable id to symbol table");
-      return false;
+      exit(1);
     }
     // Call var_decl
     debug("decl_or_func calls var_decl");
     const GrammarRule *var_decl = get_rule("var_decl");
-    if (!var_decl->parse(var_decl)) {
-      report_error(rule->name, "failed to parse var_decl");
-      return false;
-    }
-  }
-
-  else if (lookahead_token.type == TOKEN_LPAREN) {
+    var_decl->parse(var_decl);
+    return NULL;
+  } else if (lookahead_token.type == TOKEN_LPAREN) {
     if (add_symbol_check(id_name, "function") == false) {
       report_error(rule->name, "failed to add variable id to symbol table");
-      return false;
+      exit(1);
     }
     // Call func_defn
     debug("decl_or_func calls func_defn");
     const GrammarRule *func_defn = get_rule("func_defn");
-    if (!func_defn->parse(func_defn)) {
-      report_error(rule->name, "failed to parse func_defn");
-      return false;
-    }
-  }
+    ASTnode *func_defn_node = func_defn->parse(func_defn);
 
-  else {
+    func_defn_node->symbol = lookup_symbol_in_table(id_name, "function");
+
+    if (print_ast_flag) {
+      print_ast(func_defn_node);
+    }
+
+    popScope();
+    return func_defn_node;
+  } else {
     // This case exists for when only a single variable is defined
     if (add_symbol_check(id_name, "variable") == false) {
       report_error(rule->name, "failed to add variable id to symbol table");
-      return false;
+      exit(1);
     }
     if (!match(TOKEN_SEMI)) {
       report_error(rule->name,
                    "token didn't match decl or function grammar rules");
-      return false;
+      exit(1);
     }
   }
 
-  return true;
+  // Other ast's not implemented for now
+  return NULL;
 }
 
-ASTnode parse_func_defn_impl(const GrammarRule *rule) {
+ASTnode *parse_func_defn_impl(const GrammarRule *rule) {
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
     report_error(rule->name, "expected LPAREN token");
-    return false;
+    exit(1);
   }
 
   // Everything from the LPAREN token to the RBRACE token in the func_defn is
@@ -215,247 +211,207 @@ ASTnode parse_func_defn_impl(const GrammarRule *rule) {
   // Parse opt_formals
   debug("func_defn calls opt_formals");
   const GrammarRule *opt_formals = get_rule("opt_formals");
-  if (!opt_formals->parse(opt_formals)) {
-    report_error(rule->name, "unexpected token in opt_formals");
-    return false;
-  }
+  opt_formals->parse(opt_formals);
 
   // Parse RPAREN
   if (!match(TOKEN_RPAREN)) {
     report_error(rule->name, "expected RPAREN token");
-    return false;
+    exit(1);
   }
 
   // PARSE LBRACE
   if (!match(TOKEN_LBRACE)) {
     report_error(rule->name, "expected LBRACE token");
-    return false;
+    exit(1);
   }
 
   // Parse opt_var_decls
   debug("func_defn calls opt_var_decls");
   const GrammarRule *opt_var_decls = get_rule("opt_var_decls");
-  if (!opt_var_decls->parse(opt_var_decls)) {
-    report_error(rule->name, "unexpected token in opt_var_decls");
-    return false;
-  }
+  opt_var_decls->parse(opt_var_decls);
 
   // Parse opt_stmt_list
   debug("func_defn calls opt_stmt_list");
   const GrammarRule *opt_stmt_list = get_rule("opt_stmt_list");
-  if (!opt_stmt_list->parse(opt_stmt_list)) {
-    report_error(rule->name, "unexpected token in opt_stmt_list");
-    return false;
-  }
+  ASTnode *stmt_list_node = opt_stmt_list->parse(opt_stmt_list);
 
   // Parse RBRACE
   if (!match(TOKEN_RBRACE)) {
     report_error(rule->name, "expected RBRACE token");
-    return false;
+    exit(1);
   }
 
-  popScope();
+  ASTnode *func_defn_node = create_func_defn_node(NULL, stmt_list_node);
 
-  return true;
+  return func_defn_node;
 }
 
-ASTnode parse_opt_formals_impl(const GrammarRule *rule) {
+ASTnode *parse_opt_formals_impl(const GrammarRule *rule) {
   const GrammarRule *opt_formals = get_rule("opt_formals");
 
   // Only parses if not epsilon and in first
   if (!opt_formals->isFirst(opt_formals, currentToken)) {
-    return true; // Epsilon
+    return NULL; // Epsilon
   }
 
   // parse type
   debug("opt_formals calls type");
   const GrammarRule *type = get_rule("type");
-  if (!type->parse(type)) {
-    report_error(rule->name, "expected type token");
-    return false;
-  }
+  type->parse(type);
 
   // parse ID
+  debug("checking id");
   char *id = capture_identifier();
+  if (!id) {
+    report_error(rule->name, "expected an ID but found NULL");
+    exit(1);
+  }
   if (chk_decl_flag) {
-    if (!add_function_formal(id, rule)) {
+    debug("adding formal");
+    if (!add_function_formal(id)) {
       report_error(rule->name, "failed to add formal to function");
-      return false;
+      exit(1);
     }
   }
+  debug("checking symbol");
   if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "failed to add formal to symbol table");
-    return false;
+    exit(1);
   }
 
   // Parse formals
   debug("opt_formals calls formals");
   const GrammarRule *formals = get_rule("formals");
-  if (!formals->parse(formals)) {
-    report_error(rule->name, "failed to parse formals");
-    return false;
-  }
+  formals->parse(formals);
 
-  return true;
+  return NULL;
 }
 
-ASTnode parse_formals_impl(const GrammarRule *rule) {
+ASTnode *parse_formals_impl(const GrammarRule *rule) {
   const GrammarRule *formals = get_rule("formals");
 
   // Check first
   if (!formals->isFirst(formals, currentToken)) {
-    return true; // Epsilon
+    return NULL; // Epsilon
   }
 
   // Parse COMMA
   if (!match(TOKEN_COMMA)) {
     report_error(rule->name, "expected a COMMA token");
-    return false;
+    exit(1);
   }
 
   // Parse type
   debug("formals calls type");
   const GrammarRule *type = get_rule("type");
-  if (!type->parse(type)) {
-    report_error(rule->name, "unexpected token in type");
-    return false;
-  }
+  type->parse(type);
 
   // Parse ID
   char *id = capture_identifier();
   if (chk_decl_flag) {
-    if (!add_function_formal(id, rule)) {
+    if (!add_function_formal(id)) {
       report_error(rule->name, "failed to add formal to function");
-      return false;
+      exit(1);
     }
   }
   if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "failed to add formal to symbol table");
-    return false;
+    exit(1);
   }
 
   debug("formals calls formals");
-  if (!rule->parse(rule)) {
-    report_error(rule->name, "failed to parse formals");
-    return true;
-  }
+  rule->parse(rule);
 
-  return true;
+  return NULL;
 }
 
-ASTnode parse_opt_var_decls_impl(const GrammarRule *rule) {
+ASTnode *parse_opt_var_decls_impl(const GrammarRule *rule) {
   const GrammarRule *opt_var_decls = get_rule("opt_var_decls");
 
   // check first
   if (!opt_var_decls->isFirst(opt_var_decls, currentToken)) {
-    return true; // Epsilon
+    return NULL; // Epsilon
   }
 
   // parse type
   debug("opt_var_decls calls type");
   const GrammarRule *type = get_rule("type");
-  if (!type->parse(type)) {
-    report_error(rule->name, "unexpected token in type");
-    return false;
-  }
+  type->parse(type);
 
   // parse ID
   char *id = capture_identifier();
   if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "failed to add id to symbol table");
-    return false;
+    exit(1);
   }
 
   // parse var_decl
   debug("opt_var_decl calls var_decl");
   const GrammarRule *var_decl = get_rule("var_decl");
-  if (!var_decl->parse(var_decl)) {
-    report_error(rule->name, "unexpected token in var_decl");
-    return false;
-  }
+  var_decl->parse(var_decl);
 
   // Parse opt_var_decls
-  if (!rule->parse(rule)) {
-    report_error(rule->name, "unexpected token in opt_var_decls");
-    return false;
-  }
+  rule->parse(rule);
 
-  return true;
+  return NULL;
 }
 
-ASTnode parse_opt_stmt_list_impl(const GrammarRule *rule) {
+ASTnode *parse_opt_stmt_list_impl(const GrammarRule *rule) {
   if (!rule->isFirst(rule, currentToken)) {
-    return true; // Epsilon
+    return NULL; // Epsilon
   }
 
   // Parse stmt
   debug("opt_stmt_list calls stmt");
   const GrammarRule *stmt = get_rule("stmt");
-  if (!stmt->parse(stmt)) {
-    report_error(rule->name, "unexpected token in stmt");
-    return false;
-  }
+  ASTnode *stmt_node = stmt->parse(stmt);
 
   // Parse opt_stmt_list
-  if (!rule->parse(rule)) {
-    report_error(rule->name, "unexpected token in opt_stmt_list");
-    return false;
-  }
+  debug("opt_stmt_list calls opt_stmt_list");
+  ASTnode *opt_stmt_list_node = rule->parse(rule);
 
-  return true;
+  ASTnode *stmt_list_node =
+      create_stmt_list_node(stmt_node, opt_stmt_list_node);
+
+  return stmt_list_node;
 }
 
-ASTnode parse_stmt_impl(const GrammarRule *rule) {
+ASTnode *parse_stmt_impl(const GrammarRule *rule) {
   const GrammarRule *stmt = get_rule("stmt");
 
   // check first
   if (!stmt->isFirst(stmt, currentToken)) {
     report_error(rule->name, "unexpected token in stmt");
-    return false;
+    exit(1);
   }
 
   // Check assg_or_fn
   if (currentToken.type == TOKEN_ID) {
     const GrammarRule *assg_or_fn = get_rule("assg_or_fn");
     debug("stmt calls assg_or_fn");
-    if (!assg_or_fn->parse(assg_or_fn)) {
-      report_error(rule->name, "failed to parse assg_or_fn");
-      return false;
-    }
-    return true;
+    ASTnode *assg_or_fn_node = assg_or_fn->parse(assg_or_fn);
+    return assg_or_fn_node;
   }
 
   // Check while_stmt
   const GrammarRule *while_stmt = get_rule("while_stmt");
   if (while_stmt->isFirst(while_stmt, currentToken)) {
     debug("stmt calls while_stmt");
-    if (!while_stmt->parse(while_stmt)) {
-      report_error(rule->name, "unexpected token in while_stmt");
-      return false;
-    }
-    return true;
+    return while_stmt->parse(while_stmt);
   }
 
   // Check if_stmt
   const GrammarRule *if_stmt = get_rule("if_stmt");
   if (if_stmt->isFirst(if_stmt, currentToken)) {
     debug("stmt calls if_stmt");
-    if (!if_stmt->parse(if_stmt)) {
-      report_error(rule->name, "unexpected token in if_stmt");
-      return false;
-    }
-    return true;
+    return if_stmt->parse(if_stmt);
   }
 
   // Check return_stmt
   const GrammarRule *return_stmt = get_rule("return_stmt");
   if (return_stmt->isFirst(return_stmt, currentToken)) {
     debug("stmt calls return_stmt");
-    if (!return_stmt->parse(return_stmt)) {
-      report_error(rule->name, "unexpected token in return_stmt");
-      return false;
-    }
-    return true;
+    return return_stmt->parse(return_stmt);
   }
 
   // Match LBRACE
@@ -463,67 +419,57 @@ ASTnode parse_stmt_impl(const GrammarRule *rule) {
     // Parse opt_stmt_list
     const GrammarRule *opt_stmt_list = get_rule("opt_stmt_list");
     debug("stmt calls opt_stmt_list");
-    if (!opt_stmt_list->parse(opt_stmt_list)) {
-      report_error(rule->name, "unexpected token in opt_stmt_list");
-      return false;
-    }
+    ASTnode *opt_stmt_list_node = opt_stmt_list->parse(opt_stmt_list);
 
     // Parse RBRACE
     if (!match(TOKEN_RBRACE)) {
       report_error(rule->name, "expected RBRACE");
-      return false;
+      exit(1);
     }
-    return true;
+    return opt_stmt_list_node;
   }
 
   // Match SEMI
   if (!match(TOKEN_SEMI)) {
     report_error(rule->name, "expected SEMI");
-    return false;
+    exit(1);
   }
 
-  return true;
+  return NULL;
 }
 
-ASTnode parse_assg_or_fn_impl(const GrammarRule *rule) {
+ASTnode *parse_assg_or_fn_impl(const GrammarRule *rule) {
   TokenI lookahead_token = peekToken();
 
   if (!rule->isFirst(rule, lookahead_token)) {
     report_error(rule->name, "token not part of assg_or_fn first set");
-    return false;
+    exit(1);
   }
 
   if (lookahead_token.type == TOKEN_OPASSG) {
     debug("assg_or_fn calls assg_stmt");
     const GrammarRule *assg_stmt = get_rule("assg_stmt");
-    if (!assg_stmt->parse(assg_stmt)) {
-      report_error(rule->name, "failed to parse assg_stmt");
-      return false;
-    }
+    return assg_stmt->parse(assg_stmt);
+
   } else if (lookahead_token.type == TOKEN_LPAREN) {
     debug("assg_or_fn calls fn_call");
     const GrammarRule *fn_call = get_rule("fn_call");
-    if (!fn_call->parse(fn_call)) {
-      report_error(rule->name, "failed to parse fn_call");
-      return false;
-    }
-  } else {
-    return false;
+    return fn_call->parse(fn_call);
   }
 
-  return true;
+  exit(1);
 }
 
-ASTnode parse_fn_call_impl(const GrammarRule *rule) {
+ASTnode *parse_fn_call_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
   Symbol *function_symbol = NULL;
   if (chk_decl_flag) {
-    function_symbol = lookup_symbol_in_table(id, "function");
+    function_symbol = lookup_symbol_in_scope(id, "function", globalScope);
     if (!function_symbol) {
       report_error(rule->name, "ID does not exist");
       free(id);
-      return false;
+      exit(1);
     }
   }
 
@@ -541,11 +487,8 @@ ASTnode parse_fn_call_impl(const GrammarRule *rule) {
   // Parse opt_expr_list
   debug("fn_call calls opt_expr_list");
   const GrammarRule *opt_expr_list = get_rule("opt_expr_list");
-  if (!opt_expr_list->parseEx(opt_expr_list, function_symbol)) {
-    report_error(rule->name, "unexpected token in opt_expr_list");
-    free(id);
-    return false;
-  }
+  ASTnode *expr_list_node =
+      opt_expr_list->parseEx(opt_expr_list, function_symbol);
 
   if (chk_decl_flag) {
     if (function_symbol->number_of_arguments != 0) {
@@ -559,68 +502,62 @@ ASTnode parse_fn_call_impl(const GrammarRule *rule) {
   if (!match(TOKEN_RPAREN)) {
     report_error(rule->name, "expected RPAREN");
     free(id);
-    return false;
+    exit(1);
   }
 
   // Parse SEMI
   if (!match(TOKEN_SEMI)) {
     report_error(rule->name, "expected SEMI");
     free(id);
-    return false;
+    exit(1);
   }
 
-  return true;
+  ASTnode *fn_call_node =
+      create_func_call_node(function_symbol, expr_list_node);
+
+  free(id);
+  return fn_call_node;
 }
 
-ASTnode parse_opt_expr_list_impl(const GrammarRule *rule,
-                                 Symbol *function_symbol) {
+ASTnode *parse_opt_expr_list_impl(const GrammarRule *rule,
+                                  Symbol *function_symbol) {
 
   if (!rule->isFirst(rule, currentToken)) {
-    return true; // Epsilon
+    return NULL; // Epsilon
   }
 
   // Parse expr_list
   debug("opt_expr_list calls expr_list");
   const GrammarRule *expr_list = get_rule("expr_list");
-  if (!expr_list->parseEx(expr_list, function_symbol)) {
-    report_error(rule->name, "unexpected token in expr_list");
-    return false;
-  }
-
-  return true;
+  return expr_list->parseEx(expr_list, function_symbol);
 }
 
-ASTnode parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol) {
+ASTnode *parse_expr_list_impl(const GrammarRule *rule,
+                              Symbol *function_symbol) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in expr_list");
-    return false;
+    exit(1);
   }
 
   // Parse arith_exp
   debug("expr_list calls arith_exp");
   const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->parseEx(arith_exp, function_symbol)) {
-    report_error(rule->name, "unexpected token in arith_exp");
-    return false;
-  }
+  ASTnode *arith_node = arith_exp->parseEx(arith_exp, function_symbol);
 
-  // Parse optional COMMA
+  ASTnode *opt_expr_list_node = NULL; // Parse optional COMMA
   if (match(TOKEN_COMMA)) {
     // Parse expr_list
-    if (!rule->parseEx(rule, function_symbol)) {
-      report_error(rule->name, "unexpected token in expr_list");
-      return false;
-    }
-    return true;
+    opt_expr_list_node = rule->parseEx(rule, function_symbol);
   }
 
-  return true;
+  return create_expr_list_node(arith_node, opt_expr_list_node);
 }
 
-ASTnode parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
+ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
+                              Symbol *function_symbol) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "token not in arith_exp first set");
-    return false;
+    exit(1);
   }
 
   // Check for ID
@@ -629,214 +566,213 @@ ASTnode parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
 
     if (!lookup(id, "variable")) {
       report_error(rule->name, "could not find ID in symbol table");
-      return false;
+      exit(1);
     }
 
     if (function_symbol) {
       Symbol *formal = function_symbol->arguments;
-      bool found = false;
       while (formal != NULL) {
         if (strcmp(formal->name, id) == 0) {
+          // Make sure that it's the right number of arguments
           int number_of_args = function_symbol->number_of_arguments;
-          printf("%d\n", number_of_args);
-          fflush(stdout);
           if (number_of_args <= 0) {
             report_error(rule->name, "wrong number of arguments provided");
-            return false;
+            exit(1);
           }
-          found = true;
+
+          // Update the argument count and return the node
           function_symbol->number_of_arguments = number_of_args - 1;
+          free(id);
+          debug("return id node");
+          return create_identifier_node(formal);
         }
         formal = formal->next;
       }
 
-      if (!found) {
-        report_error(rule->name, "could not find id in function's formals");
-        free(id);
-        return false;
-      }
+      // id was not found within the formals
+      report_error(rule->name, "could not find id in function's formals");
+      free(id);
+      exit(1);
     }
 
+    debug("return id node");
+    Symbol *id_name = lookup_symbol_in_table(id, "variable");
     free(id);
+    return create_identifier_node(id_name);
 
   } else {
-    if (!match(TOKEN_INTCON)) {
+    if (currentToken.type != TOKEN_INTCON) {
       report_error(rule->name, "unexpected token in intcon");
-      return false;
+      exit(1);
     }
+    if (function_symbol) {
+      int number_of_args = function_symbol->number_of_arguments;
+      if (number_of_args <= 0) {
+        report_error(rule->name, "wrong number of arguments provided");
+        exit(1);
+      }
+      function_symbol->number_of_arguments = number_of_args - 1;
+    }
+
+    debug("return intconst node");
+    int number = atoi(currentToken.lexeme);
+    advanceToken();
+    return create_intconst_node(number);
   }
 
-  return true;
+  exit(1);
 }
 
-ASTnode parse_while_stmt_impl(const GrammarRule *rule) {
+ASTnode *parse_while_stmt_impl(const GrammarRule *rule) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in while_stmt");
-    return false;
+    exit(1);
   }
 
   // Parse kwWHILE
   if (!match(TOKEN_KWWHILE)) {
     report_error(rule->name, "unexpected token in while_stmt");
-    return false;
+    exit(1);
   }
 
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
     report_error(rule->name, "expected LPAREN");
-    return false;
+    exit(1);
   }
 
   // Parse bool_exp
   const GrammarRule *bool_exp = get_rule("bool_exp");
-  if (!bool_exp->parse(bool_exp)) {
-    report_error(rule->name, "unexpected token in bool_exp");
-    return false;
-  }
+  ASTnode *bool_node = bool_exp->parse(bool_exp);
 
   // Parse RPAREN
   if (!match(TOKEN_RPAREN)) {
     report_error(rule->name, "expected RPAREN");
-    return false;
+    exit(1);
   }
 
   // Parse stmt
   const GrammarRule *stmt = get_rule("stmt");
-  if (!stmt->parse(stmt)) {
-    report_error(rule->name, "unexpected token in stmt");
-    return false;
-  }
+  ASTnode *stmt_node = stmt->parse(stmt);
 
-  return true;
+  return create_while_node(bool_node, stmt_node);
 }
 
-ASTnode parse_if_stmt_impl(const GrammarRule *rule) {
+ASTnode *parse_if_stmt_impl(const GrammarRule *rule) {
   const GrammarRule *if_stmt = get_rule("if_stmt");
 
   // Check first
   if (!if_stmt->isFirst(if_stmt, currentToken)) {
     report_error(rule->name, "unexpected token in if_stmt");
-    return false;
+    exit(1);
   }
 
   // Parse if
   if (!match(TOKEN_KWIF)) {
     report_error(rule->name, "expected kwIF token");
-    return false;
+    exit(1);
   }
 
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
     report_error(rule->name, "expected LPAREN");
-    return false;
+    exit(1);
   }
 
   // Parse bool_exp
   debug("if_stmt calls bool_exp");
   const GrammarRule *bool_exp = get_rule("bool_exp");
-  if (!bool_exp->parse(bool_exp)) {
-    report_error(rule->name, "unexpected token in bool_exp");
-    return false;
-  }
+  ASTnode *bool_node = bool_exp->parse(bool_exp);
 
   // Parse RPAREN
   if (!match(TOKEN_RPAREN)) {
     report_error(rule->name, "expected RPAREN");
-    return false;
+    exit(1);
   }
 
   // Parse stmt
   const GrammarRule *stmt = get_rule("stmt");
-  if (!stmt->parse(stmt)) {
-    report_error(rule->name, "unexpected token in stmt");
-    return false;
-  }
+  ASTnode *stmt_node = stmt->parse(stmt);
 
   // Parse optional else
+  ASTnode *else_node = NULL;
   if (match(TOKEN_KWELSE)) {
-    if (!stmt->parse(stmt)) {
-      report_error(rule->name, "unexpected token in stmt");
-      return false;
-    }
+    else_node = stmt->parse(stmt);
   }
 
-  return true;
+  return create_if_node(bool_node, stmt_node, else_node);
 }
 
-ASTnode parse_bool_exp_impl(const GrammarRule *rule) {
+ASTnode *parse_bool_exp_impl(const GrammarRule *rule) {
   // Check first
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in bool_exp");
-    return false;
+    exit(1);
   }
 
   // Parse arith_exp
+  debug("bool calling arith");
   const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->parseEx(arith_exp, NULL)) {
-    report_error(rule->name, "unexpected token in arith_exp");
-    return false;
-  }
+  ASTnode *lhs_node = arith_exp->parseEx(arith_exp, NULL);
 
   // Parse relop
+  debug("bool calling relop");
   const GrammarRule *relop = get_rule("relop");
-  if (!relop->parse(relop)) {
-    report_error(rule->name, "unexpected token in relop");
-    return false;
-  }
+  ASTnode *bool_node = relop->parse(relop);
 
   // Parse arith_exp
-  if (!arith_exp->parseEx(arith_exp, NULL)) {
-    report_error(rule->name, "unexpected token in arith_exp");
-    return false;
-  }
+  debug("bool calling arith");
+  ASTnode *rhs_node = arith_exp->parseEx(arith_exp, NULL);
 
-  return true;
+  bool_node->child0 = lhs_node;
+  bool_node->child1 = rhs_node;
+  return bool_node;
 }
 
-ASTnode parse_relop_impl(const GrammarRule *rule) {
+ASTnode *parse_relop_impl(const GrammarRule *rule) {
   debug("parse_relop_impl");
   const GrammarRule *relop = get_rule("relop");
   // Check first
   if (!relop->isFirst(relop, currentToken)) {
     report_error(rule->name, "token not in relop first");
-    return false;
+    exit(1);
   }
 
   if (match(TOKEN_OPEQ)) {
     debug("EQ");
-    return true;
+    return create_eq_node(NULL, NULL);
   }
 
   if (match(TOKEN_OPNE)) {
     debug("NE");
-    return true;
+    return create_ne_node(NULL, NULL);
   }
 
   if (match(TOKEN_OPLE)) {
     debug("LE");
-    return true;
+    return create_le_node(NULL, NULL);
   }
 
   if (match(TOKEN_OPLT)) {
     debug("LT");
-    return true;
+    return create_lt_node(NULL, NULL);
   }
 
   if (match(TOKEN_OPGE)) {
     debug("GE");
-    return true;
+    return create_ge_node(NULL, NULL);
   }
 
   if (match(TOKEN_OPGT)) {
     debug("GT");
-    return true;
+    return create_gt_node(NULL, NULL);
   }
 
   report_error(rule->name, "unexpected token in relop");
-  return false;
+  exit(1);
 }
 
-ASTnode parse_assg_stmt_impl(const GrammarRule *rule) {
+ASTnode *parse_assg_stmt_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
 
@@ -844,108 +780,102 @@ ASTnode parse_assg_stmt_impl(const GrammarRule *rule) {
   if (!lookup(id, "variable")) {
     report_error(rule->name, "ID does not exist");
     free(id);
-    return false;
+    exit(1);
   }
+
+  Symbol *id_name = lookup_symbol_in_table(id, "variable");
+  ASTnode *identifier = create_identifier_node(id_name);
 
   // parse opASSG
   if (!match(TOKEN_OPASSG)) {
     report_error(rule->name, "expected opASSG");
     free(id);
-    return false;
+    exit(1);
   }
 
   // parse arith_exp
   debug("assg_stmt calls arith_exp");
   const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->parseEx(arith_exp, NULL)) {
-    report_error(rule->name, "unexpected token in arith_exp");
-    free(id);
-    return false;
-  }
+  ASTnode *arith_node = arith_exp->parseEx(arith_exp, NULL);
 
   // parse SEMI
   if (!match(TOKEN_SEMI)) {
     report_error(rule->name, "expected semi token");
     free(id);
-    return false;
+    exit(1);
   }
 
-  return true;
+  return create_assg_node(identifier, arith_node);
 }
 
-ASTnode parse_return_stmt_impl(const GrammarRule *rule) {
+ASTnode *parse_return_stmt_impl(const GrammarRule *rule) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in return_stmt");
-    return false;
+    exit(1);
   }
 
   // parse return
   if (!match(TOKEN_KWRETURN)) {
     report_error(rule->name, "unexpected token in return_stmt");
-    return false;
+    exit(1);
   }
 
   // parse optional arith_exp
+  ASTnode *arith_node = NULL;
   const GrammarRule *arith_exp = get_rule("arith_exp");
   if (arith_exp->isFirst(arith_exp, currentToken)) {
     // parse arith_exp
     debug("return calls arith_exp");
-    if (!arith_exp->parseEx(arith_exp, NULL)) {
-      report_error(rule->name, "unexpected token in arith_exp");
-      return false;
-    }
+    arith_node = arith_exp->parseEx(arith_exp, NULL);
   }
 
   // parse semi
   if (!match(TOKEN_SEMI)) {
     report_error(rule->name, "expected semi token");
-    return false;
+    exit(1);
   }
 
-  return true;
+  return create_return_node(arith_node);
 }
 
 // Variable declaration
-ASTnode parse_var_decl_impl(const GrammarRule *rule) {
+ASTnode *parse_var_decl_impl(const GrammarRule *rule) {
   // Parsing id list
   debug("var_decl calls id_list");
   const GrammarRule *id_list = get_rule("id_list");
-  if (!id_list->parse(id_list)) {
-    return false;
-  }
+  id_list->parse(id_list);
 
   // Parse SEMI
   if (!match(TOKEN_SEMI)) {
     report_error(rule->name, "expected SEMI");
-    return false;
+    exit(1);
   }
 
-  return true;
+  return NULL;
 }
 
 // Type rule: type → 'int'
-ASTnode parse_type_impl(const GrammarRule *rule) {
-  if (currentToken.type == TOKEN_KWINT) {
-    advanceToken();
-    return true;
+ASTnode *parse_type_impl(const GrammarRule *rule) {
+  if (match(TOKEN_KWINT)) {
+    return NULL;
   }
 
   report_error(rule->name, "expected type 'int'");
-  return false;
+  exit(1);
 }
 
 // ID list rule: id_list → (',' ID)*
-ASTnode parse_id_list_impl(const GrammarRule *rule) {
+ASTnode *parse_id_list_impl(const GrammarRule *rule) {
 
   // Check first
   if (!rule->isFirst(rule, currentToken)) {
-    return true; // Epsilon
+    return NULL; // Epsilon
   }
 
   // parse COMMA
   if (!match(TOKEN_COMMA)) {
     report_error(rule->name, "expected COMMA token");
-    return false;
+    exit(1);
   }
 
   // parse ID
@@ -953,18 +883,15 @@ ASTnode parse_id_list_impl(const GrammarRule *rule) {
   if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "token is ID but couldn't get name from lexeme");
     free(id);
-    return false;
+    exit(1);
   }
 
   free(id);
 
   debug("id_list calls id_list");
-  if (!rule->parse(rule)) {
-    report_error(rule->name, "failed to parse id_list");
-    return false;
-  }
+  rule->parse(rule);
 
-  return true;
+  return NULL;
 }
 
 // Initialize all grammar rules

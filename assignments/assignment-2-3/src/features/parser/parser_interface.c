@@ -2,6 +2,7 @@
 #include "./grammar_rule.h"
 #include "./symbol_table.h"
 #include "./token_service.h"
+#include "ast.h"
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,22 +17,23 @@ Scope *globalScope = NULL;
 Scope *currentScope = NULL;
 
 // Function to perform parsing with grammar rules
-bool parse_with_grammar_rules() {
+ASTnode *parse_with_grammar_rules() {
   initSymbolTable();
   init_grammar_rules();
   advanceToken();
 
   GrammarRule *prog = get_rule("prog");
-  bool result = prog->parse(prog);
+  ASTnode *proj_node = prog->parse(prog);
 
   cleanup_grammar_rules();
-  return result;
+  return proj_node;
 }
 
 int parse(void) {
-  if (parse_with_grammar_rules()) {
-    return 0; // Success
-  } else {
-    return 1; // Error
+  if (print_ast_flag) {
+    chk_decl_flag = 1;
   }
+
+  parse_with_grammar_rules();
+  return 0; // Success
 }

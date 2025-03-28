@@ -1,5 +1,4 @@
 #include "symbol_table.h"
-#include "grammar_rule.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -79,31 +78,36 @@ bool add_variable_symbol(const char *name) {
   return add_symbol(name, "variable");
 }
 
-bool add_function_formal(const char *name, const GrammarRule *rule) {
+bool add_function_formal(const char *name) {
   if (currentScope->parent == NULL) {
-    report_error(rule->name, "the current scope has no parents");
-    return false;
+    fprintf(stderr, "the current scope has no parents");
+    exit(1);
   }
 
-  Symbol *function = currentScope->parent->symbols;
+  Scope *parentScope = currentScope->parent;
+  if (!parentScope) {
+    fprintf(stderr, "mising parent scope");
+    exit(1);
+  }
+
+  Symbol *function = parentScope->symbols;
   if (!function) {
-    report_error(rule->name, "the global scope had no symbols");
-    return false;
+    fprintf(stderr, "the global scope had no symbols");
+    exit(1);
   }
 
   Symbol *argument_ptr = create_symbol(name);
-  if (argument_ptr == NULL) {
+  if (function->arguments == NULL) {
     function->arguments = argument_ptr;
     function->number_of_arguments = 1;
-    if (function->arguments == NULL) {
-      report_error(rule->name, "failed to add initial formal");
-      return false;
-    }
     return true;
   }
-  argument_ptr = create_symbol(name);
-  argument_ptr->next = function->arguments;
-  function->arguments = argument_ptr;
+
+  Symbol *last_ptr = function->arguments;
+  while (last_ptr->next != NULL) {
+    last_ptr = last_ptr->next;
+  }
+  last_ptr->next = argument_ptr;
   function->number_of_arguments = function->number_of_arguments + 1;
 
   return true;

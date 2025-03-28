@@ -7,13 +7,14 @@
 #ifndef __AST_H__
 #define __AST_H__
 
+#include "symbol_table.h"
+
 /*******************************************************************************
  *                                                                             *
  *                                AST NODE TYPES                               *
  *                                                                             *
  *******************************************************************************/
 
-#include "symbol_table.h"
 typedef enum {
   ADD,        /* + */
   AND,        /* && */
@@ -52,6 +53,30 @@ typedef struct ast_node {
   struct ast_node *child1;
   struct ast_node *child2;
 } ASTnode;
+
+ASTnode *create_add_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_and_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_assg_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_div_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_eq_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_expr_list_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_func_call_node(Symbol *function_name, ASTnode *child0);
+ASTnode *create_func_defn_node(Symbol *function_name, ASTnode *child0);
+ASTnode *create_ge_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_gt_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_identifier_node(Symbol *id_name);
+ASTnode *create_if_node(ASTnode *child0, ASTnode *child1, ASTnode *child2);
+ASTnode *create_intconst_node(int num);
+ASTnode *create_le_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_lt_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_mul_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_ne_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_or_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_return_node(ASTnode *child0);
+ASTnode *create_stmt_list_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_sub_node(ASTnode *child0, ASTnode *child1);
+ASTnode *create_while_node(ASTnode *child0, ASTnode *child1);
+
 
 /*******************************************************************************
  *                                                                             *

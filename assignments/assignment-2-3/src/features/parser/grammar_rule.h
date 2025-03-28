@@ -2,6 +2,7 @@
 #ifndef GRAMMAR_RULE_H
 #define GRAMMAR_RULE_H
 
+#include "ast.h"
 #include "token_service.h"
 #include <stdbool.h>
 
@@ -10,8 +11,8 @@ typedef struct GrammarRule GrammarRule;
 
 // Define function pointer types for clarity
 typedef bool (*IsSetFn)(const GrammarRule *rule, TokenI token);
-typedef bool (*ParseFn)(const GrammarRule *rule);
-typedef bool (*ParseFnExtra)(const GrammarRule *rule, void *extra);
+typedef ASTnode *(*ParseFn)(const GrammarRule *rule);
+typedef ASTnode *(*ParseFnExtra)(const GrammarRule *rule, void *extra);
 
 struct GrammarRule {
   // Function pointers
