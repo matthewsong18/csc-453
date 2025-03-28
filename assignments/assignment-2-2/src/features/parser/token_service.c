@@ -16,13 +16,12 @@ static bool hasPeekedToken = false;
 TokenI getNextToken(void) {
   int tok = get_token();
   TokenI token;
-  token.line = currentLine;
-  token.lexeme = strdup(lexeme);
 
   switch (tok) {
   case EOF:
     token.type = TOKEN_EOF;
-    break;
+    token.lexeme = "";
+    return token;
   case ID:
     token.type = TOKEN_ID;
     break;
@@ -90,6 +89,9 @@ TokenI getNextToken(void) {
     token.type = TOKEN_UNDEF;
     break;
   }
+
+  token.line = currentLine;
+  token.lexeme = strdup(lexeme);
   return token;
 }
 

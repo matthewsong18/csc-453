@@ -11,7 +11,7 @@
 extern int chk_decl_flag;
 
 // Debug flag
-bool DEBUG_ON = false;
+bool DEBUG_ON = true;
 
 // Forward declarations for all parse functions
 bool assg_or_fn_impl(const GrammarRule *rule);
@@ -135,6 +135,7 @@ bool parse_prog_impl(const GrammarRule *rule) {
 
   // Check follow even if first is not matched because of epsilon
   // Matching EOF
+  debug("prog checking for EOF");
   if (!rule->isFollow(rule, currentToken)) {
     report_error(rule->name, "unexpected follow token");
     return false;
@@ -274,9 +275,11 @@ bool parse_opt_formals_impl(const GrammarRule *rule) {
 
   // parse ID
   char *id = capture_identifier();
-  if (!add_function_formal(id, rule)) {
-    report_error(rule->name, "failed to add formal to function");
-    return false;
+  if (chk_decl_flag) {
+    if (!add_function_formal(id, rule)) {
+      report_error(rule->name, "failed to add formal to function");
+      return false;
+    }
   }
   if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "failed to add formal to symbol table");
@@ -318,9 +321,11 @@ bool parse_formals_impl(const GrammarRule *rule) {
 
   // Parse ID
   char *id = capture_identifier();
-  if (!add_function_formal(id, rule)) {
-    report_error(rule->name, "failed to add formal to function");
-    return false;
+  if (chk_decl_flag) {
+    if (!add_function_formal(id, rule)) {
+      report_error(rule->name, "failed to add formal to function");
+      return false;
+    }
   }
   if (!add_symbol_check(id, "variable")) {
     report_error(rule->name, "failed to add formal to symbol table");
@@ -510,11 +515,14 @@ bool parse_assg_or_fn_impl(const GrammarRule *rule) {
 bool parse_fn_call_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
-  Symbol *function_symbol = lookup_symbol_in_table(id, "function");
-  if (!function_symbol) {
-    report_error(rule->name, "ID does not exist");
-    free(id);
-    return false;
+  Symbol *function_symbol = NULL;
+  if (chk_decl_flag) {
+    function_symbol = lookup_symbol_in_table(id, "function");
+    if (!function_symbol) {
+      report_error(rule->name, "ID does not exist");
+      free(id);
+      return false;
+    }
   }
 
   // Parse LPAREN
@@ -523,7 +531,10 @@ bool parse_fn_call_impl(const GrammarRule *rule) {
     free(id);
   }
 
-  int number_of_arguments = function_symbol->number_of_arguments;
+  int number_of_arguments = 0;
+  if (chk_decl_flag) {
+    number_of_arguments = function_symbol->number_of_arguments;
+  }
 
   // Parse opt_expr_list
   debug("fn_call calls opt_expr_list");
@@ -534,11 +545,13 @@ bool parse_fn_call_impl(const GrammarRule *rule) {
     return false;
   }
 
-  if (function_symbol->number_of_arguments != 0) {
-    report_error(rule->name, "wrong number of arguments provided");
-  }
+  if (chk_decl_flag) {
+    if (function_symbol->number_of_arguments != 0) {
+      report_error(rule->name, "wrong number of arguments provided");
+    }
 
-  function_symbol->number_of_arguments = number_of_arguments;
+    function_symbol->number_of_arguments = number_of_arguments;
+  }
 
   // Parse RPAREN
   if (!match(TOKEN_RPAREN)) {
@@ -770,7 +783,7 @@ bool parse_bool_exp_impl(const GrammarRule *rule) {
   }
 
   // Parse arith_exp
-  if (!arith_exp->parse(arith_exp)) {
+  if (!arith_exp->parseEx(arith_exp, NULL)) {
     report_error(rule->name, "unexpected token in arith_exp");
     return false;
   }
@@ -840,8 +853,9 @@ bool parse_assg_stmt_impl(const GrammarRule *rule) {
   }
 
   // parse arith_exp
+  debug("assg_stmt calls arith_exp");
   const GrammarRule *arith_exp = get_rule("arith_exp");
-  if (!arith_exp->parse(arith_exp)) {
+  if (!arith_exp->parseEx(arith_exp, NULL)) {
     report_error(rule->name, "unexpected token in arith_exp");
     free(id);
     return false;
