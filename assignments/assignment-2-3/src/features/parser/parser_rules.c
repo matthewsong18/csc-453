@@ -9,34 +9,36 @@
 
 // External variables
 extern int chk_decl_flag;
+extern int print_ast_flag;
 
 // Debug flag
 bool DEBUG_ON = false;
 
 // Forward declarations for all parse functions
-bool assg_or_fn_impl(const GrammarRule *rule);
-bool parse_prog_impl(const GrammarRule *rule);
-bool parse_func_defn_impl(const GrammarRule *rule);
-bool parse_decl_or_func_impl(const GrammarRule *rule);
-bool parse_var_decl_impl(const GrammarRule *rule);
-bool parse_type_impl(const GrammarRule *rule);
-bool parse_id_list_impl(const GrammarRule *rule);
-bool parse_func_defn_rest_impl(const GrammarRule *rule);
-bool parse_opt_formals_impl(const GrammarRule *rule);
-bool parse_formals_impl(const GrammarRule *rule);
-bool parse_opt_var_decls_impl(const GrammarRule *rule);
-bool parse_opt_stmt_list_impl(const GrammarRule *rule);
-bool parse_stmt_impl(const GrammarRule *rule);
-bool parse_while_stmt_impl(const GrammarRule *rule);
-bool parse_if_stmt_impl(const GrammarRule *rule);
-bool parse_assg_stmt_impl(const GrammarRule *rule);
-bool parse_return_stmt_impl(const GrammarRule *rule);
-bool parse_fn_call_impl(const GrammarRule *rule);
-bool parse_opt_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
-bool parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
-bool parse_bool_exp_impl(const GrammarRule *rule);
-bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol);
-bool parse_relop_impl(const GrammarRule *rule);
+ASTnode parse_assg_or_fn_impl(const GrammarRule *rule);
+ASTnode parse_prog_impl(const GrammarRule *rule);
+ASTnode parse_func_defn_impl(const GrammarRule *rule);
+ASTnode parse_decl_or_func_impl(const GrammarRule *rule);
+ASTnode parse_var_decl_impl(const GrammarRule *rule);
+ASTnode parse_type_impl(const GrammarRule *rule);
+ASTnode parse_id_list_impl(const GrammarRule *rule);
+ASTnode parse_func_defn_rest_impl(const GrammarRule *rule);
+ASTnode parse_opt_formals_impl(const GrammarRule *rule);
+ASTnode parse_formals_impl(const GrammarRule *rule);
+ASTnode parse_opt_var_decls_impl(const GrammarRule *rule);
+ASTnode parse_opt_stmt_list_impl(const GrammarRule *rule);
+ASTnode parse_stmt_impl(const GrammarRule *rule);
+ASTnode parse_while_stmt_impl(const GrammarRule *rule);
+ASTnode parse_if_stmt_impl(const GrammarRule *rule);
+ASTnode parse_assg_stmt_impl(const GrammarRule *rule);
+ASTnode parse_return_stmt_impl(const GrammarRule *rule);
+ASTnode parse_fn_call_impl(const GrammarRule *rule);
+ASTnode parse_opt_expr_list_impl(const GrammarRule *rule,
+                                 Symbol *function_symbol);
+ASTnode parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol);
+ASTnode parse_bool_exp_impl(const GrammarRule *rule);
+ASTnode parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol);
+ASTnode parse_relop_impl(const GrammarRule *rule);
 
 void debug(char *source) {
   if (DEBUG_ON) {
@@ -100,7 +102,7 @@ char *capture_identifier() {
 // Implementation of all parse functions
 
 // Program rule:
-bool parse_prog_impl(const GrammarRule *rule) {
+ASTnode parse_prog_impl(const GrammarRule *rule) {
   debug("parse_prog_impl");
   // Check first
   while (rule->isFirst(rule, currentToken)) {
@@ -144,7 +146,7 @@ bool parse_prog_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_decl_or_func_impl(const GrammarRule *rule) {
+ASTnode parse_decl_or_func_impl(const GrammarRule *rule) {
 
   TokenI lookahead_token = peekToken();
   // Check next token is in FIRST set
@@ -199,7 +201,7 @@ bool parse_decl_or_func_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_func_defn_impl(const GrammarRule *rule) {
+ASTnode parse_func_defn_impl(const GrammarRule *rule) {
   // Parse LPAREN
   if (!match(TOKEN_LPAREN)) {
     report_error(rule->name, "expected LPAREN token");
@@ -257,7 +259,7 @@ bool parse_func_defn_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_opt_formals_impl(const GrammarRule *rule) {
+ASTnode parse_opt_formals_impl(const GrammarRule *rule) {
   const GrammarRule *opt_formals = get_rule("opt_formals");
 
   // Only parses if not epsilon and in first
@@ -297,7 +299,7 @@ bool parse_opt_formals_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_formals_impl(const GrammarRule *rule) {
+ASTnode parse_formals_impl(const GrammarRule *rule) {
   const GrammarRule *formals = get_rule("formals");
 
   // Check first
@@ -341,7 +343,7 @@ bool parse_formals_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_opt_var_decls_impl(const GrammarRule *rule) {
+ASTnode parse_opt_var_decls_impl(const GrammarRule *rule) {
   const GrammarRule *opt_var_decls = get_rule("opt_var_decls");
 
   // check first
@@ -381,7 +383,7 @@ bool parse_opt_var_decls_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_opt_stmt_list_impl(const GrammarRule *rule) {
+ASTnode parse_opt_stmt_list_impl(const GrammarRule *rule) {
   if (!rule->isFirst(rule, currentToken)) {
     return true; // Epsilon
   }
@@ -403,7 +405,7 @@ bool parse_opt_stmt_list_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_stmt_impl(const GrammarRule *rule) {
+ASTnode parse_stmt_impl(const GrammarRule *rule) {
   const GrammarRule *stmt = get_rule("stmt");
 
   // check first
@@ -483,7 +485,7 @@ bool parse_stmt_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_assg_or_fn_impl(const GrammarRule *rule) {
+ASTnode parse_assg_or_fn_impl(const GrammarRule *rule) {
   TokenI lookahead_token = peekToken();
 
   if (!rule->isFirst(rule, lookahead_token)) {
@@ -512,7 +514,7 @@ bool parse_assg_or_fn_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_fn_call_impl(const GrammarRule *rule) {
+ASTnode parse_fn_call_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
   Symbol *function_symbol = NULL;
@@ -570,8 +572,8 @@ bool parse_fn_call_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_opt_expr_list_impl(const GrammarRule *rule,
-                              Symbol *function_symbol) {
+ASTnode parse_opt_expr_list_impl(const GrammarRule *rule,
+                                 Symbol *function_symbol) {
 
   if (!rule->isFirst(rule, currentToken)) {
     return true; // Epsilon
@@ -588,7 +590,7 @@ bool parse_opt_expr_list_impl(const GrammarRule *rule,
   return true;
 }
 
-bool parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol) {
+ASTnode parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in expr_list");
     return false;
@@ -615,7 +617,7 @@ bool parse_expr_list_impl(const GrammarRule *rule, Symbol *function_symbol) {
   return true;
 }
 
-bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
+ASTnode parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "token not in arith_exp first set");
     return false;
@@ -667,7 +669,7 @@ bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
   return true;
 }
 
-bool parse_while_stmt_impl(const GrammarRule *rule) {
+ASTnode parse_while_stmt_impl(const GrammarRule *rule) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in while_stmt");
     return false;
@@ -708,7 +710,7 @@ bool parse_while_stmt_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_if_stmt_impl(const GrammarRule *rule) {
+ASTnode parse_if_stmt_impl(const GrammarRule *rule) {
   const GrammarRule *if_stmt = get_rule("if_stmt");
 
   // Check first
@@ -761,7 +763,7 @@ bool parse_if_stmt_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_bool_exp_impl(const GrammarRule *rule) {
+ASTnode parse_bool_exp_impl(const GrammarRule *rule) {
   // Check first
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in bool_exp");
@@ -791,7 +793,7 @@ bool parse_bool_exp_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_relop_impl(const GrammarRule *rule) {
+ASTnode parse_relop_impl(const GrammarRule *rule) {
   debug("parse_relop_impl");
   const GrammarRule *relop = get_rule("relop");
   // Check first
@@ -834,7 +836,7 @@ bool parse_relop_impl(const GrammarRule *rule) {
   return false;
 }
 
-bool parse_assg_stmt_impl(const GrammarRule *rule) {
+ASTnode parse_assg_stmt_impl(const GrammarRule *rule) {
   // Parse ID
   char *id = capture_identifier();
 
@@ -871,7 +873,7 @@ bool parse_assg_stmt_impl(const GrammarRule *rule) {
   return true;
 }
 
-bool parse_return_stmt_impl(const GrammarRule *rule) {
+ASTnode parse_return_stmt_impl(const GrammarRule *rule) {
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "unexpected token in return_stmt");
     return false;
@@ -904,7 +906,7 @@ bool parse_return_stmt_impl(const GrammarRule *rule) {
 }
 
 // Variable declaration
-bool parse_var_decl_impl(const GrammarRule *rule) {
+ASTnode parse_var_decl_impl(const GrammarRule *rule) {
   // Parsing id list
   debug("var_decl calls id_list");
   const GrammarRule *id_list = get_rule("id_list");
@@ -922,7 +924,7 @@ bool parse_var_decl_impl(const GrammarRule *rule) {
 }
 
 // Type rule: type → 'int'
-bool parse_type_impl(const GrammarRule *rule) {
+ASTnode parse_type_impl(const GrammarRule *rule) {
   if (currentToken.type == TOKEN_KWINT) {
     advanceToken();
     return true;
@@ -933,7 +935,7 @@ bool parse_type_impl(const GrammarRule *rule) {
 }
 
 // ID list rule: id_list → (',' ID)*
-bool parse_id_list_impl(const GrammarRule *rule) {
+ASTnode parse_id_list_impl(const GrammarRule *rule) {
 
   // Check first
   if (!rule->isFirst(rule, currentToken)) {
