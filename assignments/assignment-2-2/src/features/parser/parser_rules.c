@@ -11,7 +11,7 @@
 extern int chk_decl_flag;
 
 // Debug flag
-bool DEBUG_ON = true;
+bool DEBUG_ON = false;
 
 // Forward declarations for all parse functions
 bool assg_or_fn_impl(const GrammarRule *rule);
@@ -65,7 +65,7 @@ bool add_symbol_check(const char *name, const char *type) {
   if (!chk_decl_flag)
     return true;
 
-  if (lookup(name, type)) {
+  if (lookup_symbol_in_scope(name, type, currentScope) != NULL) {
     fprintf(stderr, "ERROR: LINE %d: duplicate %s declaration\n",
             currentToken.line, name);
     return false;
@@ -625,6 +625,11 @@ bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
   if (currentToken.type == TOKEN_ID) {
     char *id = capture_identifier();
 
+    if (!lookup(id, "variable")) {
+      report_error(rule->name, "could not find ID in symbol table");
+      return false;
+    }
+
     if (function_symbol) {
       Symbol *formal = function_symbol->arguments;
       bool found = false;
@@ -648,13 +653,8 @@ bool parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol) {
         free(id);
         return false;
       }
-    } else {
-      // Not using function_symbol
-      if (!lookup(id, "variable")) {
-        report_error(rule->name, "could not find ID in symbol table");
-        return false;
-      }
     }
+
     free(id);
 
   } else {
