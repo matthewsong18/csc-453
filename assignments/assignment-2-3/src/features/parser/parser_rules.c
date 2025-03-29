@@ -67,10 +67,10 @@ bool add_symbol_check(const char *name, const char *type) {
   if (!chk_decl_flag)
     return true;
 
-  if (lookup_symbol_in_scope(name, type, currentScope) != NULL) {
+  if (check_duplicate_symbol_in_scope(name, type, currentScope)) {
     fprintf(stderr, "ERROR: LINE %d: duplicate %s declaration\n",
             currentToken.line, name);
-    return false;
+    exit(1);
   }
 
   if (strcmp(type, "function") == 0) {

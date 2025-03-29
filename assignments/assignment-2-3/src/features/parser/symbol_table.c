@@ -1,4 +1,5 @@
 #include "symbol_table.h"
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,17 +20,41 @@ Symbol *lookup_symbol_in_scope(const char *name, const char *type,
                                const Scope *scope) {
   Symbol *symbol = scope->symbols;
   while (symbol != NULL) {
+    // Check matching name
     if (strcmp(symbol->name, name) != 0) {
       symbol = symbol->next;
       continue;
     }
+    // Check matching type
     if (strcmp(symbol->type, type) != 0) {
-      fprintf(stderr, "ERROR: symbol already declared");
-      exit(1);
+      symbol = symbol->next;
+      continue;
     }
+
+    // Match found
     return symbol;
   }
   return NULL;
+}
+
+bool check_duplicate_symbol_in_scope(const char *name, const char *type,
+                                     const Scope *scope) {
+  assert(scope != NULL);
+  assert(name != NULL);
+  assert(type != NULL);
+
+  Symbol *symbol = scope->symbols;
+  while (symbol != NULL) {
+    // Check matching name
+    if (strcmp(symbol->name, name) != 0) {
+      symbol = symbol->next;
+      continue;
+    }
+
+    // Duplicate found
+    return true;
+  }
+  return false;
 }
 
 Symbol *create_symbol(const char *name) {
