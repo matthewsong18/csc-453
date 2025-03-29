@@ -1,5 +1,6 @@
 #include "../src/features/parser/ast.h"
 #include "../src/features/parser/grammar_rule.h"
+#include "../src/features/parser/mips.h"
 #include "../src/features/parser/symbol_table.h"
 #include "../src/features/parser/tac.h"
 #include "../src/features/parser/token_service.h"
@@ -290,6 +291,39 @@ void test_quad_global_variable() {
   free(actual_output_string);
 }
 
+void test_mips_func_defn() {
+  char *test_src = "int f() { }";
+
+  ASTnode *actual_ast = build_ast_for_quad_test(test_src);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(actual_ast, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  MipsInstruction *mips_list = generate_mips(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = mips_list_to_string(mips_list);
+
+  char *expected_output_string = NULL;
+  expected_output_string = ".text\n"
+                           "f:\n"
+                           "    la $sp, -8($sp)\n"
+                           "    sw $fp, 4($sp)\n"
+                           "    sw $ra, 0($sp)\n"
+                           "    la $fp, 0($sp)\n"
+                           "    la $sp, 0($sp)\n"
+
+                           "la $sp, 0($fp)\n"
+                           "lw $ra, 0($sp)\n"
+                           "lw $fp, 4($sp)\n"
+                           "la $sp, 8($sp)\n"
+
+                           "jr $ra\n";
+
+  assert(strcmp(expected_output_string, actual_output_string) == 0);
+}
+
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
@@ -300,4 +334,5 @@ int main(void) {
   test_quad_println_with_integer();
   test_quad_println_chained_function_calls();
   test_quad_global_variable();
+  test_mips_func_defn();
 }
