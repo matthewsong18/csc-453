@@ -1,9 +1,10 @@
 // parser_rules.c
-#include "./grammar_rule.h"
-#include "./symbol_table.h"
 #include "ast.h"
+#include "grammar_rule.h"
+#include "symbol_table.h"
+#include "tac.h"
 #include "token_service.h"
-#include <stdbool.h>
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,9 +12,9 @@
 // External variables
 extern int chk_decl_flag;
 extern int print_ast_flag;
-
-// Debug flag
-bool DEBUG_ON = false;
+extern int gen_code_flag;
+extern int DEBUG_ON;
+int PAR_DEBUG_ON = true;
 
 // Forward declarations for all parse functions
 ASTnode *parse_assg_or_fn_impl(const GrammarRule *rule);
@@ -41,7 +42,7 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule, Symbol *function_symbol);
 ASTnode *parse_relop_impl(const GrammarRule *rule);
 
 void debug(char *source) {
-  if (DEBUG_ON) {
+  if (DEBUG_ON && PAR_DEBUG_ON) {
     printf("%s\n", source);
     fflush(stdout);
   }
@@ -104,6 +105,9 @@ char *capture_identifier() {
 // Program rule:
 ASTnode *parse_prog_impl(const GrammarRule *rule) {
   debug("parse_prog_impl");
+
+  ASTnode *func_node = NULL;
+
   // Check first
   while (rule->isFirst(rule, currentToken)) {
     // We need to parse type since both func and var have type and ID so we'll
@@ -127,7 +131,7 @@ ASTnode *parse_prog_impl(const GrammarRule *rule) {
     // Call decl_or_func rule
     debug("prog calls decl_or_func");
     const GrammarRule *decl_or_func = get_rule("decl_or_func");
-    decl_or_func->parse(decl_or_func);
+    func_node = decl_or_func->parse(decl_or_func);
   }
 
   // Check follow even if first is not matched because of epsilon
@@ -138,7 +142,7 @@ ASTnode *parse_prog_impl(const GrammarRule *rule) {
     exit(1);
   }
 
-  return NULL;
+  return func_node;
 }
 
 ASTnode *parse_decl_or_func_impl(const GrammarRule *rule) {
@@ -174,8 +178,21 @@ ASTnode *parse_decl_or_func_impl(const GrammarRule *rule) {
 
     func_defn_node->symbol = lookup_symbol_in_table(id_name, "function");
 
+    if (func_defn_node->symbol == NULL) {
+      report_error(rule->name, "Could not find symbol");
+      exit(1);
+    }
+
     if (print_ast_flag) {
       print_ast(func_defn_node);
+    }
+
+    if (gen_code_flag) {
+      Quad *code_list = NULL;
+      make_TAC(func_defn_node, &code_list);
+      Quad *reversed_code_list = reverse_tac_list(code_list);
+
+      print_quad(reversed_code_list);
     }
 
     popScope();
@@ -491,8 +508,11 @@ ASTnode *parse_fn_call_impl(const GrammarRule *rule) {
       opt_expr_list->parseEx(opt_expr_list, function_symbol);
 
   if (chk_decl_flag) {
-    if (function_symbol->number_of_arguments != 0) {
+    if (strcmp(function_symbol->name, "println") == 0) {
+      // continue
+    } else if (function_symbol->number_of_arguments != 0) {
       report_error(rule->name, "wrong number of arguments provided");
+      exit(1);
     }
 
     function_symbol->number_of_arguments = number_of_arguments;
@@ -589,6 +609,17 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
         formal = formal->next;
       }
 
+      if (strcmp(function_symbol->name, "println") == 0) {
+        Symbol *id_name = lookup_symbol_in_table(id, "variable");
+
+        if (id_name == NULL) {
+          report_error(rule->name, "Could not find symbol");
+          exit(1);
+        }
+
+        free(id);
+        return create_identifier_node(id_name);
+      }
       // id was not found within the formals
       report_error(rule->name, "could not find id in function's formals");
       free(id);
@@ -597,6 +628,12 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
 
     debug("return id node");
     Symbol *id_name = lookup_symbol_in_table(id, "variable");
+
+    if (id_name == NULL) {
+      report_error(rule->name, "Could not find symbol");
+      exit(1);
+    }
+
     free(id);
     return create_identifier_node(id_name);
 
@@ -615,7 +652,8 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
     }
 
     debug("return intconst node");
-    int number = atoi(currentToken.lexeme);
+    int number = 0;
+    number = atoi(currentToken.lexeme);
     advanceToken();
     return create_intconst_node(number);
   }
@@ -784,6 +822,14 @@ ASTnode *parse_assg_stmt_impl(const GrammarRule *rule) {
   }
 
   Symbol *id_name = lookup_symbol_in_table(id, "variable");
+
+  if (id_name == NULL) {
+    report_error(rule->name, "Could not find symbol");
+    exit(1);
+  }
+
+  assert(strlen(id_name->name) != 0);
+
   ASTnode *identifier = create_identifier_node(id_name);
 
   // parse opASSG

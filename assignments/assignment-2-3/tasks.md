@@ -1,10 +1,25 @@
 # CSC 352 Assignment 2 Milestone 2
 
+## Test List
+
+- [x] Quad Func Defn
+
+- [ ] Quad Assignment
+
+- [ ] Quad Func Call
+
+- [ ] Quad Println
+
+- [ ] Quad variable references x = y = z
+
 ## Tasks
 
-- Check whether the symbol table cares about function or variable for names. If
-  the name exists, irrelevant of whether the name is for a function or variable,
-  should the check fail?
+- [ ] Fix function call
 
-- Change lookup to just look through the linked list then check parent linked
-  lists automatically in one function
+## Log
+
+- 2025-04-07T0115: There's something wrong with the function call code. I called
+  `f(10)`, but `call f, 0` came out.
+
+- 2025-04-07T1441: Now, I'm getting a "wrong number of arguments" for `f(10);`
+  in parser_rules.c on line 626.

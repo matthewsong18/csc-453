@@ -29,8 +29,11 @@ ASTnode *parse_with_grammar_rules() {
   return proj_node;
 }
 
+// Debug flag
+bool DEBUG_ON = false;
+
 int parse(void) {
-  if (print_ast_flag) {
+  if (print_ast_flag || gen_code_flag) {
     chk_decl_flag = 1;
   }
 

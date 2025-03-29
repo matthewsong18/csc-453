@@ -45,9 +45,10 @@ typedef enum {
 typedef struct ast_node {
   NodeType node_type; // The node type of the ASTnode
   Symbol *
-      symbol; /* The symbol reference if the ASTnode is representing a symbol */
-  int num;    /* The integer constant value if the ASTnode is representing an
-               integer constant */
+      symbol;            /* The symbol reference if the ASTnode is representing a symbol */
+  char *identifier_name; // (depreciated) Need this because local scope gets dropped after function runs
+  int num;               /* The integer constant value if the ASTnode is
+                            representing an integer constant */
   // Possible children (up to 3 depending on type)
   struct ast_node *child0;
   struct ast_node *child1;

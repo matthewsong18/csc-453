@@ -150,23 +150,27 @@ void pushScope(void) {
   currentScope = newScope;
 }
 
-// Pop the current scope off the scope stack, freeing its symbolbols.
+// Pop the current scope off the scope stack, freeing its symbols.
 void popScope(void) {
   if (currentScope == NULL) {
     fprintf(stderr, "ERROR: no scope to pop\n");
-    exit(1);
+    return;
   }
-  Scope *temp = currentScope;
+
+  // Scope *temp = currentScope;
   currentScope = currentScope->parent;
-  Symbol *symbol = temp->symbols;
-  while (symbol != NULL) {
-    Symbol *next = symbol->next;
-    free(symbol->name);
-    free(symbol->type);
-    free(symbol);
-    symbol = next;
-  }
-  free(temp);
+
+  // Decided to just leak symbols + names for the ast and quad
+
+  // Symbol *symbol = temp->symbols;
+  // Symbol *next_symbol = NULL;
+
+  // while (symbol != NULL) {
+  //   next_symbol = symbol->next;
+  //   free(symbol->name);
+  //   free(symbol);
+  //   symbol = next_symbol;
+  // }
 }
 
 void initSymbolTable(void) {
@@ -178,4 +182,50 @@ void initSymbolTable(void) {
   globalScope->symbols = NULL;
   globalScope->parent = NULL;
   currentScope = globalScope;
+  Symbol *println_symbol = create_symbol("println");
+  println_symbol->number_of_arguments = 1;
+  println_symbol->type = strdup("function");
+  globalScope->symbols = println_symbol;
+}
+
+void free_symbol(Symbol *symbol) {
+
+  if (symbol == NULL) {
+    return;
+  }
+
+  free(symbol->name);
+  free(symbol->type);
+  free_symbol(symbol->arguments);
+  free_symbol(symbol->next);
+
+  symbol->name = NULL;
+  symbol->type = NULL;
+  symbol->value = 0;
+  symbol->number_of_arguments = 0;
+  symbol->arguments = NULL;
+  symbol->next = NULL;
+}
+
+void free_scope(Scope *scope) {
+  if (scope == NULL) {
+    return;
+  }
+
+  free_symbol(scope->symbols);
+  free_scope(scope->parent);
+
+  scope->symbols = NULL;
+  scope->parent = NULL;
+}
+
+void free_symbol_table(void) {
+  if (currentScope == NULL) {
+    return;
+  }
+
+  free_scope(currentScope);
+
+  currentScope = NULL;
+  globalScope = NULL;
 }

@@ -1,5 +1,6 @@
 #include "scanner.h"
 #include <ctype.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -18,8 +19,81 @@ static void push_back_extra_chars(const char *candidate, int from,
                                   int candidate_len);
 
 static int is_whitespace(int character);
-static int handle_comment_start(void);
 static void skip_multi_line_comment(void);
+
+int currentLine = 1;
+
+static const char *input_buffer = NULL;
+static int buffer_pos = 0;
+static bool reading_from_string = false;
+static int string_pushed_back_char = -1; // Buffer for one ungetc from string
+
+// Replacement for getchar()
+static int scanner_getchar() {
+  int ch;
+  if (reading_from_string) {
+    if (string_pushed_back_char != -1) {
+      ch = string_pushed_back_char;
+      string_pushed_back_char = -1;
+      return ch;
+    }
+    if (input_buffer && input_buffer[buffer_pos] != '\0') {
+      ch = input_buffer[buffer_pos++];
+    } else {
+      ch = EOF;
+    }
+  } else {
+    ch = getchar();
+  }
+  if (ch == '\n') {
+    currentLine++;
+  }
+  return ch;
+}
+
+// Replacement for ungetc()
+static void scanner_ungetc(int c) {
+  if (c == EOF)
+    return;
+
+  // Decrement line count before pushback if it's a newline
+  // This assumes the newline was the *last* char read. Be wary of edge cases.
+  if (c == '\n' && currentLine > 1) { // Avoid going below line 1
+    currentLine--;
+  }
+
+  if (reading_from_string) {
+    // Try to "push back" by moving buffer pointer
+    if (buffer_pos > 0 && string_pushed_back_char == -1) {
+      buffer_pos--;
+    }
+    // Use the single-char pushback buffer if pointer can't move back
+    else if (string_pushed_back_char == -1) {
+      string_pushed_back_char = c; // Store the pushed-back char
+    } else {
+      // Error: Cannot push back more than one character reliably from string
+      fprintf(stderr, "Scanner Error: Cannot ungetc character from string "
+                      "input (buffer full or at start).\n");
+    }
+  } else {
+    ungetc(c, stdin);
+  }
+}
+
+void scanner_init_with_string(const char *input_string) {
+  input_buffer = input_string;
+  buffer_pos = 0;
+  reading_from_string = true;
+  string_pushed_back_char = -1;
+  currentLine = 1;
+}
+
+void scanner_init_with_stdin(void) {
+  input_buffer = NULL;
+  reading_from_string = false;
+  string_pushed_back_char = -1;
+  currentLine = 1;
+}
 
 // Token registry (sorted by match priority)
 static const TokenMatch *token_types[] = {
@@ -63,8 +137,6 @@ static const TokenMatch *token_types[] = {
     // --- Terminator ---
     NULL,
 };
-
-int currentLine = 1;
 
 //
 // get_token()
@@ -139,7 +211,7 @@ static const TokenMatch *find_matching_token(char *candidate, int candidate_len,
 static void push_back_extra_chars(const char *candidate, int from,
                                   int candidate_len) {
   for (int i = candidate_len - 1; i >= from; i--) {
-    ungetc(candidate[i], stdin);
+    scanner_ungetc(candidate[i]);
   }
 }
 
@@ -154,7 +226,7 @@ static char *build_token_candidate(void) {
   static char buffer[1024];
   int pos = 0;
 
-  int ch = getchar();
+  int ch = scanner_getchar();
   if (ch == EOF)
     return NULL;
 
@@ -166,11 +238,10 @@ static char *build_token_candidate(void) {
   if (isalnum(ch)) {
     // Read full identifier or number.
     while (pos < 1023) {
-      int next = getchar();
-      if (next == EOF)
-        break;
-      if (!isalnum(next)) {
-        ungetc(next, stdin);
+      int next = scanner_getchar();
+      if (next == EOF || !isalnum(next)) {
+        if (next != EOF)
+          scanner_ungetc(next);
         break;
       }
       buffer[pos++] = next;
@@ -180,17 +251,15 @@ static char *build_token_candidate(void) {
     const char *op_chars = "=!<>|&+-*/%";
     if (strchr(op_chars, ch)) {
       for (int i = 1; i < MAX_OP_LEN && pos < 1023; i++) {
-        int next = getchar();
-        if (next == EOF)
-          break;
-        if (isspace(next) || isalnum(next) || !strchr(op_chars, next)) {
-          ungetc(next, stdin);
+        int next = scanner_getchar();
+        if (next == EOF || !strchr(op_chars, next)) {
+          if (next != EOF)
+            scanner_ungetc(next);
           break;
         }
         buffer[pos++] = next;
       }
     }
-    // For punctuation (like '(' or ')'), we simply keep the single character.
   }
   buffer[pos] = '\0';
   return buffer;
@@ -202,18 +271,22 @@ static char *build_token_candidate(void) {
 //
 void skip_whitespace_and_comments(void) {
   int character;
-  while ((character = getchar()) != EOF) {
-    if (character == '\n')
-      currentLine++;
-
+  while ((character = scanner_getchar()) != EOF) {
     if (is_whitespace(character))
       continue;
-    if (character == '/' && handle_comment_start())
-      continue;
-    else if (character == '/')
-      return;
 
-    ungetc(character, stdin);
+    if (character == '/') {
+      int next_char = scanner_getchar();
+      if (next_char == '*') {
+        skip_multi_line_comment();
+        continue;
+      } else {
+        scanner_ungetc(next_char);
+        scanner_ungetc(character);
+        return;
+      }
+    }
+    scanner_ungetc(character);
     return;
   }
 }
@@ -228,33 +301,13 @@ static int is_whitespace(int character) {
 }
 
 //
-// handle_comment_start()
-// Checks if the '/' character starts a comment. If the next character is '*',
-// it skips the multi-line comment and returns 1; otherwise, it pushes the
-// character(s) back and returns 0.
-//
-static int handle_comment_start(void) {
-  int next_char = getchar();
-
-  if (next_char == '*') {
-    skip_multi_line_comment();
-    return 1;
-  }
-
-  ungetc(next_char, stdin);
-  ungetc('/', stdin);
-  return 0;
-}
-
-//
 // skip_multi_line_comment()
 // Consumes characters until the closing '*/' is found.
 //
 static void skip_multi_line_comment(void) {
   int previous = 0;
   int current = 0;
-
-  while ((current = getchar()) != EOF) {
+  while ((current = scanner_getchar()) != EOF) {
     if (previous == '*' && current == '/')
       return;
     previous = current;

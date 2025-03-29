@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 ASTnode *create_ast_node() {
   ASTnode *new_ast_node = malloc(sizeof(ASTnode));
@@ -78,8 +79,6 @@ ASTnode *create_func_call_node(Symbol *function_name, ASTnode *child0) {
 
 ASTnode *create_func_defn_node(Symbol *function_name, ASTnode *child0) {
   ASTnode *func_defn_node = create_one_child_node(FUNC_DEF, child0);
-  func_defn_node->symbol = function_name;
-
   return func_defn_node;
 }
 
@@ -92,9 +91,10 @@ ASTnode *create_gt_node(ASTnode *child0, ASTnode *child1) {
 }
 
 ASTnode *create_identifier_node(Symbol *id_name) {
+  assert(id_name);
   ASTnode *id_node = create_ast_node();
-  id_node->node_type = IDENTIFIER;
   id_node->symbol = id_name;
+  id_node->node_type = IDENTIFIER;
 
   return id_node;
 }
@@ -166,6 +166,7 @@ NodeType ast_node_type(void *ptr) {
 char *func_def_name(void *ptr) {
   ASTnode *node = ptr;
   assert(node != NULL);
+  assert(node->symbol);
   return node->symbol->name;
 }
 
@@ -176,6 +177,7 @@ char *func_def_name(void *ptr) {
 int func_def_nargs(void *ptr) {
   ASTnode *node = ptr;
   assert(node != NULL);
+  assert(node->symbol);
   return node->symbol->number_of_arguments;
 }
 
@@ -193,9 +195,13 @@ char *func_def_argname(void *ptr, int n) {
     exit(1);
   }
 
+  assert(node->symbol);
+
   if (n <= 0 || n > node->symbol->number_of_arguments) {
     exit(1);
   }
+
+  assert(node->symbol->arguments);
 
   Symbol *formal = node->symbol->arguments;
   for (int i = 1; i < n; i++) {
@@ -285,7 +291,6 @@ void *expr_list_rest(void *ptr) {
 char *expr_id_name(void *ptr) {
   ASTnode *node = ptr;
   assert(node != NULL);
-  assert(node->symbol != NULL);
   return node->symbol->name;
 }
 
@@ -358,7 +363,10 @@ void *stmt_if_else(void *ptr) {
  */
 char *stmt_assg_lhs(void *ptr) {
   ASTnode *node = ptr;
-  assert(node != NULL);
+  assert(node);
+  assert(node->child0);
+  assert(node->child0->symbol);
+  assert(node->child0->symbol->name);
   return node->child0->symbol->name;
 }
 

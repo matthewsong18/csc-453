@@ -48,6 +48,9 @@ typedef struct TokenMatch {
  int value;
 } TokenMatch;
 
+void scanner_init_with_string(const char *input_string);
+void scanner_init_with_stdin(void);
+
 extern const TokenMatch M_UNDEF;     /* undefined */
 extern const TokenMatch M_ID;        /* identifier: e.g., x, abc, p_q_12 */
 extern const TokenMatch M_INTCON;    /* integer constant: e.g., 12345 */

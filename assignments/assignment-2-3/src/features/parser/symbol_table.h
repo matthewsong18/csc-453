@@ -7,6 +7,7 @@
 typedef struct Symbol {
     char *name;
     char *type;
+    int value;
     int number_of_arguments;
     struct Symbol *arguments;
     struct Symbol *next;
@@ -25,6 +26,7 @@ Symbol *lookup_symbol_in_scope(const char *name, const char *type, const Scope *
 Symbol *lookup_symbol_in_table(const char *name, const char *type);
 bool check_duplicate_symbol_in_scope(const char *name, const char *type, const
                                       Scope *scope);
+Symbol *create_symbol(const char *name);
 bool add_symbol(const char *name, const char *type);
 bool add_function_symbol(const char *name);
 bool add_variable_symbol(const char *name);
@@ -32,6 +34,7 @@ bool add_function_formal(const char *name);
 void pushScope(void);
 void popScope(void);
 void initSymbolTable(void);
+void free_symbol_table(void);
 
 #endif
 
