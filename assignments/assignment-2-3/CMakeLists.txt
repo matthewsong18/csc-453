@@ -13,6 +13,7 @@ add_executable(compile
   src/features/parser/ast-print.c
   src/features/parser/driver.c
   src/features/parser/grammar_rule.c
+  src/features/parser/mips.c
   src/features/parser/parser_interface.c
   src/features/parser/parser_rules.c
   src/features/parser/symbol_table.c
@@ -32,6 +33,7 @@ add_executable(run_tests
   src/features/parser/ast.c
   src/features/parser/ast-print.c
   src/features/parser/grammar_rule.c
+  src/features/parser/mips.c
   src/features/parser/parser_interface.c
   src/features/parser/parser_rules.c
   src/features/parser/symbol_table.c
