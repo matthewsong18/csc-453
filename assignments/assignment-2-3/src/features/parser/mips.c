@@ -3,6 +3,7 @@
 #include "symbol_table.h"
 #include "tac.h"
 #include <assert.h>
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,7 +70,8 @@ MipsInstruction *generate_mips(Quad *tac_list) {
   // --- Add global variables to the .data section ---
   bool has_globals = false;
   for (Symbol *sym = globalScope->symbols; sym != NULL; sym = sym->next) {
-    if (strcmp(sym->type, "variable") == 0 && sym->name[0] != 't') { // Exclude temporary variables
+    if (strcmp(sym->type, "variable") == 0 &&
+        sym->name[0] != 't') { // Exclude temporary variables
       if (!has_globals) {
         mips_head = append_mips_instr(mips_head, new_mips_instr(".data"));
         mips_head = append_mips_instr(mips_head, new_mips_instr(".align 2"));
@@ -119,20 +121,121 @@ MipsInstruction *generate_mips(Quad *tac_list) {
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
       break;
 
-    case TAC_ASSIGN:
+    case TAC_ASSIGN: {
       assert(dest && dest->operand_type == SYM_TABLE_PTR);
       assert(src1);
+
+      char *dest_name = dest->val.symbol_ptr->name;
+      Symbol *dest_sym = dest->val.symbol_ptr;
+
+      // --- Determine Destination Type ---
+      // Check if the destination is a compiler temporary (e.g., starts with
+      // 't') Adapt this check if your temporary naming convention is different!
+      bool is_dest_temp = (dest_name[0] == 't' && isdigit(dest_name[1]));
+      // Example using a hypothetical symbol flag: bool is_dest_temp =
+      // dest_sym->is_temporary;
+
+      // Check if the destination is a global variable
+      bool is_global_dest = false;
+      if (!is_dest_temp) { // Only check for global if it's not a temporary
+        Symbol *global_check =
+            lookup_symbol_in_scope(dest_name, "variable", globalScope);
+        if (global_check &&
+            global_check == dest_sym) { // Ensure it's the exact symbol entry
+                                        // from global scope
+          // It exists globally. Check if it's shadowed locally.
+          if (currentScope != globalScope) {
+            Symbol *local_check =
+                lookup_symbol_in_scope(dest_name, "variable", currentScope);
+            if (local_check == NULL) { // Not shadowed locally
+              is_global_dest = true;
+            }
+            // If local_check exists, it's a local variable, not the global one.
+          } else {
+            // We are in the global scope, so if found, it's global.
+            is_global_dest = true;
+          }
+        }
+      }
+      // If !is_dest_temp && !is_global_dest, it's assumed to be a local
+      // variable for now.
+
+      // --- Source Handling (Simplified) ---
+      char src_operand_reg[10] =
+          "$t0"; // Default register for loading immediates/values
+      bool src_loaded_to_reg = false;
+
       if (src1->operand_type == INTEGER_CONSTANT) {
-        // Using $t0 for immediate -> param pattern
-        snprintf(buffer, sizeof(buffer), "    li $t0, %d",
+        // Source is an immediate value -> Load into src_operand_reg ($t0)
+        snprintf(buffer, sizeof(buffer), "    li %s, %d", src_operand_reg,
                  src1->val.integer_const);
         mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
-        // Assuming $t0 is used by next PARAM, no store to dest needed YET
-      } else { /* ... handle other assignments ... */
-        snprintf(buffer, sizeof(buffer), "    # Unhandled TAC_ASSIGN Var");
+        src_loaded_to_reg = true;
+      } else if (src1->operand_type == SYM_TABLE_PTR) {
+        // Source is another symbol (variable or temporary)
+        // Assume its value is in the corresponding MIPS register
+        snprintf(src_operand_reg, sizeof(src_operand_reg), "$%s",
+                 src1->val.symbol_ptr
+                     ->name); // e.g., $t0, $t1, (or potentially $a0, $v0 etc.)
+        // We don't generate a load instruction here; we assume a prior
+        // instruction loaded the variable or calculated the value into the
+        // source register src1 represents.
+        src_loaded_to_reg = true; // The value is conceptually in this register
+      } else {
+        // Handle other source types if necessary
+        snprintf(buffer, sizeof(buffer),
+                 "    # <UNHANDLED_SRC_TYPE FOR TAC_ASSIGN>");
         mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+        // Fall through might be dangerous here...
       }
-      break;
+
+      // --- MIPS Code Generation based on Destination ---
+      if (is_dest_temp) {
+        // Assigning TO a temporary register.
+        char *dest_reg_name =
+            dest_name; // Assumes temp name tN maps to register $tN
+
+        if (src1->operand_type == INTEGER_CONSTANT) {
+          // We already loaded the immediate into src_operand_reg ($t0)
+          // If dest is also $t0, the li was sufficient. If dest is different
+          // (e.g., t1), move.
+          if (strcmp(dest_reg_name, src_operand_reg + 1) !=
+              0) { // +1 to skip '$'
+            snprintf(buffer, sizeof(buffer), "    move $%s, %s", dest_reg_name,
+                     src_operand_reg);
+            mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+          }
+          // If dest IS $t0 (src_operand_reg), the 'li $t0, ...' was all that's
+          // needed.
+        } else if (src1->operand_type == SYM_TABLE_PTR) {
+          // Assigning Temp = Temp/Var (value assumed already in
+          // src_operand_reg)
+          snprintf(buffer, sizeof(buffer), "    move $%s, %s", dest_reg_name,
+                   src_operand_reg); // e.g., move $t1, $t0
+          mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+        }
+        // NO 'sw' instruction when assigning *to* a temporary register.
+
+      } else if (is_global_dest) {
+        // Assigning TO a global variable.
+        // Value must be in a register (src_operand_reg holds the name of that
+        // register).
+        assert(src_loaded_to_reg); // Should have handled source loading above.
+        snprintf(buffer, sizeof(buffer), "    sw %s, _%s", src_operand_reg,
+                 dest_name);
+        mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+
+      } else {
+        // Assigning TO a local variable (NOT temporary, NOT global)
+        // We need the frame pointer offset here, which we don't have.
+        snprintf(
+            buffer, sizeof(buffer),
+            "    # TAC_ASSIGN to local var %s (Unhandled - Needs FP Offset)",
+            dest_name);
+        mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+        // Correct code would be: sw src_operand_reg, offset($fp)
+      }
+    } break;
 
     case TAC_PARAM:
       assert(src1);
