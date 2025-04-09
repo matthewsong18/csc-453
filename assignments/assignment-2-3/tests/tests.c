@@ -346,21 +346,26 @@ void test_mips_println() {
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
                                  "    la $sp, 0($sp)\n"
+
                                  "    li $t0, 34567\n"
+
                                  "    la $sp, -4($sp)\n"
                                  "    sw $t0, 0($sp)\n"
                                  "    jal _println\n"
                                  "    la $sp, 4($sp)\n"
+
                                  "    la $sp, 0($fp)\n"
                                  "    lw $ra, 0($sp)\n"
                                  "    lw $fp, 4($sp)\n"
                                  "    la $sp, 8($sp)\n"
+
                                  "    jr $ra\n"
 
                                  ".align 2\n"
                                  ".data\n"
                                  "_nl: .asciiz \"\\n\"\n"
                                  ".align 2\n"
+
                                  ".text\n"
                                  "_println:\n"
                                  "    li $v0, 1\n"
@@ -369,6 +374,7 @@ void test_mips_println() {
                                  "    li $v0, 4\n"
                                  "    la $a0, _nl\n"
                                  "    syscall\n"
+
                                  "    jr $ra\n"
 
                                  "\nmain: j _main\n";
@@ -457,6 +463,99 @@ void test_mips_assign_global_variable() {
   assert(strcmp(expected_output_string, actual_output_string) == 0);
 }
 
+void test_mips_multiple_variables_and_println() {
+  char *test_src = "int x, y, z; int main() { x = 12345; println(x); y = "
+                   "23456; println(y); z = 34567; println(z); }";
+
+  ASTnode *actual_ast = build_ast_for_quad_test(test_src);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(actual_ast, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  MipsInstruction *mips_list = NULL;
+  mips_list = generate_mips(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = mips_list_to_string(mips_list);
+
+  char *expected_output_string = ".data\n"
+                                 ".align 2\n"
+                                 "_x: .space 4\n"
+                                 "_y: .space 4\n"
+                                 "_z: .space 4\n"
+
+                                 ".text\n"
+                                 "_main:\n"
+                                 "    la $sp, -8($sp)\n"
+                                 "    sw $fp, 4($sp)\n"
+                                 "    sw $ra, 0($sp)\n"
+                                 "    la $fp, 0($sp)\n"
+                                 "    la $sp, 0($sp)\n"
+
+                                 // x = 12345
+                                 "    li $t0, 12345\n"
+                                 "    sw $t0, _x\n"
+
+                                 // println(x)
+                                 "    lw $t1, _x\n"
+                                 "    la $sp, -4($sp)\n"
+                                 "    sw $t1, 0($sp)\n"
+                                 "    jal _println\n"
+                                 "    la $sp, 4($sp)\n"
+
+                                 // y = 23456
+                                 "    li $t2, 23456\n"
+                                 "    sw $t2, _y\n"
+
+                                 // println(y)
+                                 "    lw $t3, _y\n"
+                                 "    la $sp, -4($sp)\n"
+                                 "    sw $t3, 0($sp)\n"
+                                 "    jal _println\n"
+                                 "    la $sp, 4($sp)\n"
+
+                                 // z = 34567
+                                 "    li $t4, 34567\n"
+                                 "    sw $t4, _z\n"
+
+                                 // println(z)
+                                 "    lw $t5, _z\n"
+                                 "    la $sp, -4($sp)\n"
+                                 "    sw $t5, 0($sp)\n"
+                                 "    jal _println\n"
+                                 "    la $sp, 4($sp)\n"
+
+                                 "    la $sp, 0($fp)\n"
+                                 "    lw $ra, 0($sp)\n"
+                                 "    lw $fp, 4($sp)\n"
+                                 "    la $sp, 8($sp)\n"
+
+                                 "    jr $ra\n"
+
+                                 ".align 2\n"
+                                 ".data\n"
+                                 "_nl: .asciiz \"\\n\"\n"
+                                 ".align 2\n"
+
+                                 ".text\n"
+                                 "_println:\n"
+                                 "    li $v0, 1\n"
+                                 "    lw $a0, 0($sp)\n"
+                                 "    syscall\n"
+                                 "    li $v0, 4\n"
+                                 "    la $a0, _nl\n"
+                                 "    syscall\n"
+
+                                 "    jr $ra\n"
+
+                                 "\nmain: j _main\n";
+
+  assert(strcmp(expected_output_string, actual_output_string) == 0);
+
+  free(actual_output_string);
+}
+
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
@@ -471,4 +570,5 @@ int main(void) {
   test_mips_println();
   test_mips_global_variables();
   test_mips_assign_global_variable();
+  test_mips_multiple_variables_and_println();
 }
