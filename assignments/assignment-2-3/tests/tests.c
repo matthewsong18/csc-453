@@ -172,10 +172,35 @@ void test_quad_3_formals() {
   free(actual_output_string);
 }
 
+void test_quad_variable_references() {
+
+  char *test_source_code = "int f() { int x; int y; x = 10; y = x; }";
+  ASTnode *ast_input = build_ast_for_quad_test(test_source_code);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(ast_input, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = quad_list_to_string(actual_code_list);
+
+  const char *expected_output_string = "enter f\n"
+                                       "t0 = 10\n"
+                                       "x = t0\n"
+                                       "y = x\n"
+                                       "leave f\n"
+                                       "return\n";
+
+  assert(strcmp(actual_output_string, expected_output_string) == 0);
+
+  free(actual_output_string);
+}
+
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
   test_quad_one_func_call();
   test_quad_println();
   test_quad_3_formals();
+  test_quad_variable_references();
 }
