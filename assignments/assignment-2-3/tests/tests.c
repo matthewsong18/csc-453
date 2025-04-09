@@ -196,6 +196,29 @@ void test_quad_variable_references() {
   free(actual_output_string);
 }
 
+void test_quad_println_with_integer() {
+
+  char *test_source_code = "int main() { println(34567); }";
+  ASTnode *ast_input = build_ast_for_quad_test(test_source_code);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(ast_input, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = quad_list_to_string(actual_code_list);
+
+  const char *expected_output_string = "enter main\n"
+                                       "t0 = 34567\n"
+                                       "param t0\n"
+                                       "call println, 1\n"
+                                       "leave main\n"
+                                       "return\n";
+
+  assert(strcmp(actual_output_string, expected_output_string) == 0);
+
+  free(actual_output_string);
+}
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
@@ -203,4 +226,5 @@ int main(void) {
   test_quad_println();
   test_quad_3_formals();
   test_quad_variable_references();
+  test_quad_println_with_integer();
 }
