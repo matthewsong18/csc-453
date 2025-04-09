@@ -50,4 +50,6 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list);
 Quad *reverse_tac_list(Quad *head);
 void print_quad(Quad *code_list);
 char *quad_list_to_string(Quad *code_list);
+void reset_temp_counter();
+
 #endif

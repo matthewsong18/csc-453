@@ -9,8 +9,6 @@
 extern int DEBUG_ON;
 int TAC_DEBUG_ON = true;
 
-int temp_counter = 0;
-
 void debug_tac(char *message) {
   if (!DEBUG_ON || !TAC_DEBUG_ON) {
     return;
@@ -42,6 +40,10 @@ Operand *new_operand(OperandType op_type, void *value) {
 
   return operand;
 }
+
+int temp_counter = 0;
+
+void reset_temp_counter() { temp_counter = 0; }
 
 // Based on lecture slide 05
 Symbol *new_temp(char *type) {
@@ -225,15 +227,23 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
     }
 
     // FUNC CALL
-    left = node->symbol;
+
+    // First do param
+
     right = make_TAC(node->child0, code_list);
+
+    // Then do call
+
+    right = NULL;
+
+    left = node->symbol;
 
     op_type = TAC_CALL;
 
     src1 = new_operand(SYM_TABLE_PTR, left);
-    src2 = new_operand(SYM_TABLE_PTR, right);
+    src2 = new_operand(INTEGER_CONSTANT, &(left->number_of_arguments));
 
-    instruction = new_instr(op_type, src1, src2, dest);
+    instruction = new_instr(op_type, src1, src2, NULL);
 
     instruction->next = *code_list;
     *code_list = instruction;
@@ -248,9 +258,32 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
   case EXPR_LIST:
     debug_tac("EXPR_LIST");
-    // FIX: Not sure how to do EXPR_LIST
-    // make_TAC(node->child0, code_list);
-    // make_TAC(node->child1, code_list);
+
+    left = make_TAC(node->child0, code_list);
+
+    op_type = TAC_PARAM;
+
+    src1 = new_operand(SYM_TABLE_PTR, left);
+    instruction = new_instr(op_type, src1, NULL, NULL);
+
+    instruction->next = *code_list;
+    *code_list = instruction;
+
+    right = make_TAC(node->child1, code_list);
+
+    // Optional Expr List
+    if (right == NULL) {
+      return NULL;
+    }
+
+    op_type = TAC_PARAM;
+
+    src1 = new_operand(SYM_TABLE_PTR, right);
+    instruction = new_instr(op_type, src1, NULL, NULL);
+
+    instruction->next = *code_list;
+    *code_list = instruction;
+
     return NULL;
 
   default:
@@ -473,7 +506,13 @@ char *quad_list_to_string(Quad *code_list) {
     case TAC_MUL:
     case TAC_DIV:
     case TAC_PARAM:
+      snprintf(temp_instr_buffer, sizeof(temp_instr_buffer), "param %s\n",
+               src1->val.symbol_ptr->name);
+      break;
     case TAC_CALL:
+      snprintf(temp_instr_buffer, sizeof(temp_instr_buffer), "call %s, %d\n",
+               src1->val.symbol_ptr->name, src2->val.integer_const);
+      break;
     case TAC_PRINTLN:
       break;
     }

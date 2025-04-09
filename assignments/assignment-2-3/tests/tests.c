@@ -18,6 +18,7 @@ ASTnode *build_ast_for_quad_test(char *test_src) {
 
   initSymbolTable();
   init_grammar_rules();
+  reset_temp_counter();
 
   scanner_init_with_string(test_src);
 
@@ -29,6 +30,21 @@ ASTnode *build_ast_for_quad_test(char *test_src) {
   cleanup_grammar_rules();
 
   return proj_node;
+}
+
+ASTnode *continue_ast(char *test_src) {
+  init_grammar_rules();
+
+  scanner_init_with_string(test_src);
+
+  advanceToken();
+
+  GrammarRule *rule_2 = get_rule("prog");
+  ASTnode *ast_node_2 = rule_2->parse(rule_2);
+
+  cleanup_grammar_rules();
+
+  return ast_node_2;
 }
 
 void test_quad_func_defn() {
@@ -74,12 +90,17 @@ void test_assignment() {
   free(actual_output_string);
 }
 
-void test_three_address_code_generation() {
-  char *test_source_code = "int f() { } int main() { int x; x = 10; f(x); }";
-  ASTnode *ast_input = build_ast_for_quad_test(test_source_code);
+void test_one_func_call() {
+  char *test_source_code_1 = "int f(int x) { }";
+  char *test_src_2 = "int main() { int x; x = 10; f(x); }";
+  ASTnode *ast_input_1 = build_ast_for_quad_test(test_source_code_1);
 
   Quad *actual_code_list = NULL;
-  make_TAC(ast_input, &actual_code_list);
+  make_TAC(ast_input_1, &actual_code_list);
+
+  ASTnode *ast_input_2 = continue_ast(test_src_2);
+  make_TAC(ast_input_2, &actual_code_list);
+
   actual_code_list = reverse_tac_list(actual_code_list);
 
   char *actual_output_string = NULL;
@@ -89,7 +110,8 @@ void test_three_address_code_generation() {
                                        "leave f\n"
                                        "return\n"
                                        "enter main\n"
-                                       "x = 10\n"
+                                       "t0 = 10\n"
+                                       "x = t0\n"
                                        "param x\n"
                                        "call f, 1\n"
                                        "leave main\n"
@@ -103,5 +125,5 @@ void test_three_address_code_generation() {
 int main(void) {
   test_quad_func_defn();
   test_assignment();
-  test_three_address_code_generation();
+  test_one_func_call();
 }
