@@ -173,33 +173,54 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
     return NULL;
 
   case FUNC_DEF:
-    left = node->symbol;
+    left = node->symbol; // Function symbol ('f', 'g', 'main')
 
+    // Generate TAC_ENTER for the function
     op_type = TAC_ENTER;
-
     src1 = new_operand(SYM_TABLE_PTR, left);
-
-    instruction = new_instr(op_type, src1, src2, dest);
-
+    instruction = new_instr(op_type, src1, NULL, NULL);
     instruction->next = *code_list;
     *code_list = instruction;
+
+    reset_temp_counter(); // Reset temps for the new function
+
+    // Store the scope that belongs to this function *before* recursing
+    // Note: This assumes pushScope() was called just before make_TAC for
+    // FUNC_DEF
+    Scope *function_body_scope = currentScope;
 
     debug_tac("Instruction Set");
-    make_TAC(node->child0, code_list);
+    // Process the function body (statement list)
+    make_TAC(node->child0,
+             code_list); // This recursively calls make_TAC, adding local vars &
+                         // updating function_body_scope->current_offset
 
+    // ============================================================
+    // NEW: Calculate and store local variable size
+    // ============================================================
+    // Calculate size AFTER processing body, using the final offset value
+    // Size = abs(final_offset) - starting_offset_below_fp_ra (which was
+    // abs(-8))
+    int total_local_bytes = abs(function_body_scope->current_offset) - 8;
+    if (total_local_bytes < 0)
+      total_local_bytes = 0; // Ensure non-negative size
+
+    // Store the calculated size in the function's symbol entry
+    left->local_var_bytes = total_local_bytes;
+    // ============================================================
+    // END NEW
+    // ============================================================
+
+    // Generate TAC_LEAVE
     op_type = TAC_LEAVE;
-
-    instruction = new_instr(op_type, src1, src2, dest);
-
+    // src1 is still the function symbol
+    instruction = new_instr(op_type, src1, NULL, NULL);
     instruction->next = *code_list;
     *code_list = instruction;
 
+    // Generate TAC_RETURN
     op_type = TAC_RETURN;
-
-    src1 = NULL;
-
-    instruction = new_instr(op_type, src1, src2, dest);
-
+    instruction = new_instr(op_type, NULL, NULL, NULL);
     instruction->next = *code_list;
     *code_list = instruction;
 
@@ -242,16 +263,59 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
     // We need to go through the params right to left
 
     // Recurse through right first
-    make_TAC(node->child1, code_list);
+    make_TAC(node->child1,
+             code_list); // Generate code for subsequent parameters first
 
+    // Process the current parameter expression/identifier
+    left = make_TAC(
+        node->child0,
+        code_list); // 'left' holds the symbol resulting from the expression
+                    // (e.g., 'x', 'y', 'z' or a temporary 'tN')
+
+    // Check if 'left' is a variable symbol that needs loading (not already a
+    // temporary 'tN')
+    bool needs_load = false;
+    if (left && left->type && strcmp(left->type, "variable") == 0 &&
+        left->name[0] != 't') {
+      // It's a user variable like 'x', 'y', 'z' or a local variable
+      needs_load = true;
+    }
+
+    Symbol *param_symbol_to_use; // This will hold the symbol (original or new
+                                 // temp) for TAC_PARAM
+
+    if (needs_load) {
+      // 1. Create a new temporary to hold the loaded value
+      Symbol *temp_for_load =
+          new_temp("variable"); // e.g., gets t1 (temp_counter increments)
+
+      // 2. Generate TAC to load the variable into the temporary (tN = variable)
+      Operand *dest_op = new_operand(SYM_TABLE_PTR, temp_for_load); // dest = t1
+      Operand *src_op = new_operand(SYM_TABLE_PTR, left);           // src1 = x
+      Quad *load_instr =
+          new_instr(TAC_ASSIGN, src_op, NULL, dest_op); // TAC: t1 = x
+
+      // Prepend the load instruction (so it happens before param)
+      load_instr->next = *code_list;
+      *code_list = load_instr;
+
+      // 3. Use the new temporary for the TAC_PARAM instruction
+      param_symbol_to_use = temp_for_load; // param t1
+
+    } else {
+      // 'left' is already a temporary (e.g., result of expression) or constant.
+      // Use it directly.
+      param_symbol_to_use = left; // param tN
+    }
+
+    // 4. Generate the TAC_PARAM instruction using the appropriate symbol
     op_type = TAC_PARAM;
+    src1 = new_operand(SYM_TABLE_PTR, param_symbol_to_use);
+    instruction =
+        new_instr(op_type, src1, NULL,
+                  NULL); // TAC: param tN (or param x if it wasn't loaded)
 
-    // Add current param
-    left = make_TAC(node->child0, code_list);
-
-    src1 = new_operand(SYM_TABLE_PTR, left);
-    instruction = new_instr(op_type, src1, NULL, NULL);
-
+    // Prepend the param instruction
     instruction->next = *code_list;
     *code_list = instruction;
 

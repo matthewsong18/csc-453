@@ -11,12 +11,18 @@ typedef struct Symbol {
     int number_of_arguments;
     struct Symbol *arguments;
     struct Symbol *next;
+    // Mips stuff
+    int offset;           // Stack offset relative to $fp for locals/params, 0 otherwise
+    struct Scope *scope;  // Pointer to the scope this symbol belongs to
+    int local_var_bytes;
 } Symbol;
 
 // A scope is a linked list of symbols, with a pointer to its parent scope.
 typedef struct Scope {
     Symbol *symbols;
     struct Scope *parent;
+    // Mips stuff
+    int current_offset;
 } Scope;
 
 extern Scope *globalScope;

@@ -74,6 +74,11 @@ Symbol *create_symbol(const char *name) {
   symbol->arguments = NULL;
   symbol->next = NULL;
 
+  // Mips stuff
+  symbol->offset = 0;
+  symbol->scope = NULL;
+  symbol->local_var_bytes = 0; // Only relevant for function symbols later
+
   return symbol;
 }
 
@@ -89,6 +94,20 @@ bool add_symbol(const char *name, const char *type) {
     fprintf(stderr, "ERROR: memory allocation failure for symbol type\n");
     return false;
   }
+
+  // Mips logic
+  symbol->scope = currentScope; // Record the scope where symbol is defined
+
+  // Assign stack offset ONLY if it's a variable in a non-global scope
+  if (currentScope != globalScope && strcmp(type, "variable") == 0) {
+    symbol->offset =
+        currentScope->current_offset; // Assign the next available offset
+    currentScope->current_offset -=
+        4; // Decrement for the next local (assuming 4-byte ints)
+  } else {
+    symbol->offset = 0; // Globals, functions, temps get offset 0
+  }
+  // End mips
 
   symbol->next = currentScope->symbols;
   currentScope->symbols = symbol;
@@ -147,6 +166,11 @@ void pushScope(void) {
   }
   newScope->symbols = NULL;
   newScope->parent = currentScope;
+
+  // Mips logic
+  newScope->current_offset = -8;
+
+  // End mips
   currentScope = newScope;
 }
 

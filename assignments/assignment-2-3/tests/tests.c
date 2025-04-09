@@ -137,7 +137,8 @@ void test_quad_println() {
   const char *expected_output_string = "enter main\n"
                                        "t0 = 20\n"
                                        "y = t0\n"
-                                       "param y\n"
+                                       "t1 = y\n"
+                                       "param t1\n"
                                        "call println, 1\n"
                                        "leave main\n"
                                        "return\n";
@@ -244,7 +245,8 @@ void test_quad_println_chained_function_calls() {
   actual_output_string = quad_list_to_string(actual_code_list);
 
   const char *expected_output_string = "enter g\n"
-                                       "param x\n"
+                                       "t0 = x\n"
+                                       "param t0\n"
                                        "call println, 1\n"
                                        "leave g\n"
                                        "return\n"
@@ -312,7 +314,6 @@ void test_mips_func_defn() {
                                  "    sw $fp, 4($sp)\n"
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
-                                 "    la $sp, 0($sp)\n"
 
                                  "    la $sp, 0($fp)\n"
                                  "    lw $ra, 0($sp)\n"
@@ -345,7 +346,6 @@ void test_mips_println() {
                                  "    sw $fp, 4($sp)\n"
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
-                                 "    la $sp, 0($sp)\n"
 
                                  "    li $t0, 34567\n"
 
@@ -407,7 +407,6 @@ void test_mips_global_variables() {
                                  "    sw $fp, 4($sp)\n"
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
-                                 "    la $sp, 0($sp)\n"
 
                                  "    la $sp, 0($fp)\n"
                                  "    lw $ra, 0($sp)\n"
@@ -446,7 +445,6 @@ void test_mips_assign_global_variable() {
                                  "    sw $fp, 4($sp)\n"
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
-                                 "    la $sp, 0($sp)\n"
 
                                  "    li $t0, 10\n"
                                  "    sw $t0, _x\n"
@@ -491,7 +489,6 @@ void test_mips_multiple_variables_and_println() {
                                  "    sw $fp, 4($sp)\n"
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
-                                 "    la $sp, 0($sp)\n"
 
                                  // x = 12345
                                  "    li $t0, 12345\n"
