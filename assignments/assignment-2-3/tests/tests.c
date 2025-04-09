@@ -219,6 +219,53 @@ void test_quad_println_with_integer() {
 
   free(actual_output_string);
 }
+
+void test_quad_println_chained_function_calls() {
+
+  char *test_src_1 = "int g(int x) { println(x); }";
+  char *test_src_2 = "int f(int x) { g(x); }";
+  char *test_src_3 = "int main() { f(34567); }";
+
+  ASTnode *ast_input_1 = build_ast_for_quad_test(test_src_1);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(ast_input_1, &actual_code_list);
+
+  ASTnode *ast_input_2 = continue_ast(test_src_2);
+  make_TAC(ast_input_2, &actual_code_list);
+
+  ASTnode *ast_input_3 = continue_ast(test_src_3);
+  make_TAC(ast_input_3, &actual_code_list);
+
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = quad_list_to_string(actual_code_list);
+
+  const char *expected_output_string = "enter g\n"
+                                       "param x\n"
+                                       "call println, 1\n"
+                                       "leave g\n"
+                                       "return\n"
+
+                                       "enter f\n"
+                                       "param x\n"
+                                       "call g, 1\n"
+                                       "leave f\n"
+                                       "return\n"
+
+                                       "enter main\n"
+                                       "t0 = 34567\n"
+                                       "param t0\n"
+                                       "call f, 1\n"
+                                       "leave main\n"
+                                       "return\n";
+
+  assert(strcmp(actual_output_string, expected_output_string) == 0);
+
+  free(actual_output_string);
+}
+
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
@@ -227,4 +274,5 @@ int main(void) {
   test_quad_3_formals();
   test_quad_variable_references();
   test_quad_println_with_integer();
+  test_quad_println_chained_function_calls();
 }

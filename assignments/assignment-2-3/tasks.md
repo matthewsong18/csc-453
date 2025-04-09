@@ -1,4 +1,4 @@
-# CSC 352 Assignment 2 Milestone 2
+# CSC 352 Assignment 3 Milestone 2
 
 ## Test List
 
@@ -10,11 +10,9 @@
 
 - [x] Quad Println
 
-- [ ] Quad variable references x = y = z
+- [x] Quad variable references x = y = z
 
 ## Tasks
-
-- [ ] Fix function call
 
 ## Log
 
