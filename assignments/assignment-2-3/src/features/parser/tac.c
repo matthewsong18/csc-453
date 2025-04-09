@@ -239,26 +239,17 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
   case EXPR_LIST:
     debug_tac("EXPR_LIST");
 
+    // We need to go through the params right to left
+
+    // Recurse through right first
+    make_TAC(node->child1, code_list);
+
+    op_type = TAC_PARAM;
+
+    // Add current param
     left = make_TAC(node->child0, code_list);
 
-    op_type = TAC_PARAM;
-
     src1 = new_operand(SYM_TABLE_PTR, left);
-    instruction = new_instr(op_type, src1, NULL, NULL);
-
-    instruction->next = *code_list;
-    *code_list = instruction;
-
-    right = make_TAC(node->child1, code_list);
-
-    // Optional Expr List
-    if (right == NULL) {
-      return NULL;
-    }
-
-    op_type = TAC_PARAM;
-
-    src1 = new_operand(SYM_TABLE_PTR, right);
     instruction = new_instr(op_type, src1, NULL, NULL);
 
     instruction->next = *code_list;

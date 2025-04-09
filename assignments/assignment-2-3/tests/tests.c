@@ -159,10 +159,10 @@ void test_quad_3_formals() {
   actual_output_string = quad_list_to_string(actual_code_list);
 
   const char *expected_output_string = "enter f\n"
-                                       "t0 = 0\n"
+                                       "t0 = 1\n"
                                        "param t0\n"
                                        "param z\n"
-                                       "t1 = 1\n"
+                                       "t1 = 0\n"
                                        "param t1\n"
                                        "call f, 3\n"
                                        "leave f\n"
