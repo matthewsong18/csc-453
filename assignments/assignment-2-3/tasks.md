@@ -4,11 +4,11 @@
 
 - [x] Quad Func Defn
 
-- [ ] Quad Assignment
+- [x] Quad Assignment
 
-- [ ] Quad Func Call
+- [x] Quad Func Call
 
-- [ ] Quad Println
+- [x] Quad Println
 
 - [ ] Quad variable references x = y = z
 

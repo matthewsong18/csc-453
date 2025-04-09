@@ -68,7 +68,7 @@ void test_quad_func_defn() {
   free(actual_output_string);
 }
 
-void test_assignment() {
+void test_quad_assignment() {
   char *test_source_code = "int f() { int x; x = 10; }";
   ASTnode *ast_input = build_ast_for_quad_test(test_source_code);
 
@@ -90,7 +90,7 @@ void test_assignment() {
   free(actual_output_string);
 }
 
-void test_one_func_call() {
+void test_quad_one_func_call() {
   char *test_source_code_1 = "int f(int x) { }";
   char *test_src_2 = "int main() { int x; x = 10; f(x); }";
   ASTnode *ast_input_1 = build_ast_for_quad_test(test_source_code_1);
@@ -122,8 +122,60 @@ void test_one_func_call() {
   free(actual_output_string);
 }
 
+void test_quad_println() {
+  char *test_source_code = "int main() { int y; y = 20; println(y); }";
+  ASTnode *ast_input = build_ast_for_quad_test(test_source_code);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(ast_input, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = quad_list_to_string(actual_code_list);
+
+  const char *expected_output_string = "enter main\n"
+                                       "t0 = 20\n"
+                                       "y = t0\n"
+                                       "param y\n"
+                                       "call println, 1\n"
+                                       "leave main\n"
+                                       "return\n";
+
+  assert(strcmp(actual_output_string, expected_output_string) == 0);
+
+  free(actual_output_string);
+}
+
+void test_quad_3_formals() {
+  char *test_source_code = "int f(int x, int y, int z) { { { f(0, z, 1); } } }";
+  ASTnode *ast_input = build_ast_for_quad_test(test_source_code);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(ast_input, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = quad_list_to_string(actual_code_list);
+
+  const char *expected_output_string = "enter f\n"
+                                       "t0 = 0\n"
+                                       "param t0\n"
+                                       "param z\n"
+                                       "t1 = 1\n"
+                                       "param t1\n"
+                                       "call f, 3\n"
+                                       "leave f\n"
+                                       "return\n";
+
+  assert(strcmp(actual_output_string, expected_output_string) == 0);
+
+  free(actual_output_string);
+}
+
 int main(void) {
   test_quad_func_defn();
-  test_assignment();
-  test_one_func_call();
+  test_quad_assignment();
+  test_quad_one_func_call();
+  test_quad_println();
+  test_quad_3_formals();
 }

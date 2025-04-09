@@ -208,37 +208,22 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
   case FUNC_CALL:
     debug_tac("FUNC_CALL");
 
-    // PRINTLN
-    if (strcmp(node->symbol->name, "println") == 0) {
-
-      debug_tac("PRINTLN");
-
-      left = make_TAC(node->child0, code_list);
-
-      op_type = TAC_PRINTLN;
-
-      src1 = new_operand(SYM_TABLE_PTR, left);
-
-      instruction = new_instr(op_type, src1, src2, dest);
-
-      instruction->next = *code_list;
-      *code_list = instruction;
-      return NULL;
-    }
-
     // FUNC CALL
 
     // First do param
 
-    right = make_TAC(node->child0, code_list);
+    make_TAC(node->child0, code_list);
 
     // Then do call
 
-    right = NULL;
-
     left = node->symbol;
 
-    op_type = TAC_CALL;
+    // FUNC_CALL or PRINTLN
+    if (strcmp(node->symbol->name, "println") == 0) {
+      op_type = TAC_PRINTLN;
+    } else {
+      op_type = TAC_CALL;
+    }
 
     src1 = new_operand(SYM_TABLE_PTR, left);
     src2 = new_operand(INTEGER_CONSTANT, &(left->number_of_arguments));
@@ -514,6 +499,8 @@ char *quad_list_to_string(Quad *code_list) {
                src1->val.symbol_ptr->name, src2->val.integer_const);
       break;
     case TAC_PRINTLN:
+      snprintf(temp_instr_buffer, sizeof(temp_instr_buffer), "call %s, %d\n",
+               src1->val.symbol_ptr->name, src2->val.integer_const);
       break;
     }
 
