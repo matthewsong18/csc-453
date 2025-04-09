@@ -8,6 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+extern Scope *globalScope;
+extern Scope *currentScope;
+
 // --- Helper functions: new_mips_instr, append_mips_instr ---
 // (Assume they exist as before)
 MipsInstruction *new_mips_instr(const char *instr_text) {
@@ -63,9 +66,22 @@ MipsInstruction *generate_mips(Quad *tac_list) {
     }
   }
 
-  // Start with .text directive
+  // --- Add global variables to the .data section ---
+  bool has_globals = false;
+  for (Symbol *sym = globalScope->symbols; sym != NULL; sym = sym->next) {
+    if (strcmp(sym->type, "variable") == 0 && sym->name[0] != 't') { // Exclude temporary variables
+      if (!has_globals) {
+        mips_head = append_mips_instr(mips_head, new_mips_instr(".data"));
+        mips_head = append_mips_instr(mips_head, new_mips_instr(".align 2"));
+        has_globals = true;
+      }
+      snprintf(buffer, sizeof(buffer), "_%s: .space 4", sym->name);
+      mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+    }
+  }
+
+  // Add the .text section after global variables
   mips_head = append_mips_instr(mips_head, new_mips_instr(".text"));
-  // Do not add .globl main
 
   // --- Second Pass: Generate MIPS for TAC instructions ---
   for (Quad *instruction = tac_list; instruction != NULL;

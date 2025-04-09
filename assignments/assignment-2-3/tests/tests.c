@@ -376,6 +376,45 @@ void test_mips_println() {
   assert(strcmp(expected_output_string, actual_output_string) == 0);
 }
 
+void test_mips_global_variables() {
+
+  char *test_src = "int x; int main() { }";
+
+  ASTnode *actual_ast = build_ast_for_quad_test(test_src);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(actual_ast, &actual_code_list);
+  actual_code_list = reverse_tac_list(actual_code_list);
+
+  MipsInstruction *mips_list = NULL;
+  mips_list = generate_mips(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = mips_list_to_string(mips_list);
+
+  char *expected_output_string = ".data\n"
+                                 ".align 2\n"
+                                 "_x: .space 4\n"
+                                 ".text\n"
+                                 "_main:\n"
+                                 "    la $sp, -8($sp)\n"
+                                 "    sw $fp, 4($sp)\n"
+                                 "    sw $ra, 0($sp)\n"
+                                 "    la $fp, 0($sp)\n"
+                                 "    la $sp, 0($sp)\n"
+
+                                 "    la $sp, 0($fp)\n"
+                                 "    lw $ra, 0($sp)\n"
+                                 "    lw $fp, 4($sp)\n"
+                                 "    la $sp, 8($sp)\n"
+
+                                 "    jr $ra\n"
+
+                                 "\nmain: j _main\n";
+
+  assert(strcmp(expected_output_string, actual_output_string) == 0);
+}
+
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
@@ -388,4 +427,5 @@ int main(void) {
   test_quad_global_variable();
   test_mips_func_defn();
   test_mips_println();
+  test_mips_global_variables();
 }
