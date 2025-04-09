@@ -12,7 +12,15 @@
 
 - [x] Quad variable references x = y = z
 
+- [x] Mips func defn
+
+- [x] Mips println
+
+- [ ] Mips global variables
+
 ## Tasks
+
+- Fix global variables
 
 ## Log
 

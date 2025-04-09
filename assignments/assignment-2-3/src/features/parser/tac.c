@@ -218,12 +218,7 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
     left = node->symbol;
 
-    // FUNC_CALL or PRINTLN
-    if (strcmp(node->symbol->name, "println") == 0) {
-      op_type = TAC_PRINTLN;
-    } else {
-      op_type = TAC_CALL;
-    }
+    op_type = TAC_CALL;
 
     src1 = new_operand(SYM_TABLE_PTR, left);
     src2 = new_operand(INTEGER_CONSTANT, &(left->number_of_arguments));
@@ -384,8 +379,6 @@ void print_quad(Quad *code_list) {
     printf("call %s, %s\n", src1->val.symbol_ptr->name,
            src2->val.symbol_ptr->name);
     break;
-  case TAC_PRINTLN:
-    break;
   case TAC_PARAM:
   case TAC_ENTER:
   case TAC_LEAVE:
@@ -495,10 +488,6 @@ char *quad_list_to_string(Quad *code_list) {
                src1->val.symbol_ptr->name);
       break;
     case TAC_CALL:
-      snprintf(temp_instr_buffer, sizeof(temp_instr_buffer), "call %s, %d\n",
-               src1->val.symbol_ptr->name, src2->val.integer_const);
-      break;
-    case TAC_PRINTLN:
       snprintf(temp_instr_buffer, sizeof(temp_instr_buffer), "call %s, %d\n",
                src1->val.symbol_ptr->name, src2->val.integer_const);
       break;

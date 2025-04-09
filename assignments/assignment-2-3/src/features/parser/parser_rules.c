@@ -1,6 +1,7 @@
 // parser_rules.c
 #include "ast.h"
 #include "grammar_rule.h"
+#include "mips.h"
 #include "symbol_table.h"
 #include "tac.h"
 #include "token_service.h"
@@ -107,6 +108,7 @@ ASTnode *parse_prog_impl(const GrammarRule *rule) {
   debug("parse_prog_impl");
 
   ASTnode *func_node = NULL;
+  Quad *code_list = NULL;
 
   // Check first
   while (rule->isFirst(rule, currentToken)) {
@@ -132,6 +134,10 @@ ASTnode *parse_prog_impl(const GrammarRule *rule) {
     debug("prog calls decl_or_func");
     const GrammarRule *decl_or_func = get_rule("decl_or_func");
     func_node = decl_or_func->parse(decl_or_func);
+
+    if (gen_code_flag) {
+      make_TAC(func_node, &code_list);
+    }
   }
 
   // Check follow even if first is not matched because of epsilon
@@ -140,6 +146,19 @@ ASTnode *parse_prog_impl(const GrammarRule *rule) {
   if (!rule->isFollow(rule, currentToken)) {
     report_error(rule->name, "unexpected follow token");
     exit(1);
+  }
+
+  if (gen_code_flag) {
+
+    Quad *reversed_code_list = reverse_tac_list(code_list);
+
+    MipsInstruction *mips_list = NULL;
+    mips_list = generate_mips(reversed_code_list);
+
+    char *output_string = NULL;
+    output_string = mips_list_to_string(mips_list);
+
+    printf("%s", output_string);
   }
 
   return func_node;
@@ -185,14 +204,6 @@ ASTnode *parse_decl_or_func_impl(const GrammarRule *rule) {
 
     if (print_ast_flag) {
       print_ast(func_defn_node);
-    }
-
-    if (gen_code_flag) {
-      Quad *code_list = NULL;
-      make_TAC(func_defn_node, &code_list);
-      Quad *reversed_code_list = reverse_tac_list(code_list);
-
-      print_quad(reversed_code_list);
     }
 
     popScope();

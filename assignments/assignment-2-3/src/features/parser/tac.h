@@ -21,7 +21,6 @@ typedef enum {
   TAC_LEAVE,
   TAC_RETURN,
 
-  TAC_PRINTLN,
 } OpType;
 
 typedef enum {
