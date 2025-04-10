@@ -421,11 +421,21 @@ MipsInstruction *generate_mips(Quad *tac_list) {
                label_str);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
     } break;
-
-      snprintf(buffer, sizeof(buffer), "# Unhandled TAC Op: %d (AND/OR)",
-               instruction->op);
+    case TAC_SET_RETVAL: {
+      assert(src1);
+      mips_head = load_operand_for_branch(src1, "$t0", mips_head);
+      snprintf(buffer, sizeof(buffer), "    move $v0, $t0");
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
-      break;
+    } break;
+
+    case TAC_RETRIEVE: {
+      assert(dest && dest->operand_type == SYM_TABLE_PTR &&
+             dest->val.symbol_ptr);
+      char dest_reg[10];
+      snprintf(dest_reg, sizeof(dest_reg), "$%s", dest->val.symbol_ptr->name);
+      snprintf(buffer, sizeof(buffer), "    move %s, $v0", dest_reg);
+      mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+    } break;
 
     default:
       snprintf(buffer, sizeof(buffer), "# Unhandled TAC Op: %d",

@@ -637,7 +637,7 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
         report_error(rule->name,
                      "too many arguments provided in function call");
         free(id);
-        / exit(1);
+        exit(1);
       }
 
       if (strcmp(callee_function_symbol->name, "println") != 0) {

@@ -125,35 +125,49 @@ void make_bool(ASTnode *node, Quad *trueDest, Quad *falseDest,
   OpType op_type = TAC_IF_EQ;
 
   switch (node->node_type) {
-  case AND: {
-    op_type = TAC_IF_AND;
-  } break;
+  // case AND: {
+  //   Quad *L_eval_B = new_label();
+  //   make_bool(node->child0, L_eval_B, falseDest, code_list);
+  //   L_eval_B->next = *code_list;
+  //   *code_list = L_eval_B;
+  //   make_bool(node->child1, trueDest, falseDest, code_list);
+  //   break;
+  // }
+  // case OR: {
+  //   Quad *L_eval_B = new_label();
+  //   make_bool(node->child0, trueDest, L_eval_B, code_list);
+  //   L_eval_B->next = *code_list;
+  //   *code_list = L_eval_B;
+  //   make_bool(node->child1, trueDest, falseDest, code_list);
+  //   break;
+  // }
   case EQ: {
     op_type = TAC_IF_EQ;
+    bool_helper(node, trueDest, falseDest, op_type, code_list);
   } break;
   case GE: {
     op_type = TAC_IF_GE;
+    bool_helper(node, trueDest, falseDest, op_type, code_list);
   } break;
   case GT: {
     op_type = TAC_IF_GT;
+    bool_helper(node, trueDest, falseDest, op_type, code_list);
   } break;
   case LE: {
     op_type = TAC_IF_LE;
+    bool_helper(node, trueDest, falseDest, op_type, code_list);
   } break;
   case LT: {
     op_type = TAC_IF_LT;
+    bool_helper(node, trueDest, falseDest, op_type, code_list);
   } break;
   case NE: {
     op_type = TAC_IF_NE;
-  } break;
-  case OR: {
-    op_type = TAC_IF_OR;
+    bool_helper(node, trueDest, falseDest, op_type, code_list);
   } break;
   default:
     break;
   }
-
-  bool_helper(node, trueDest, falseDest, op_type, code_list);
 }
 
 Symbol *make_TAC(ASTnode *node, Quad **code_list) {
@@ -267,31 +281,43 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
     return NULL;
 
-  case FUNC_CALL:
+  case FUNC_CALL: {
     debug_tac("FUNC_CALL");
 
-    // FUNC CALL
-
-    // First do param
+    Symbol *func_symbol = node->symbol;
+    Symbol *return_val_temp = NULL;
+    Quad *call_instr = NULL;
+    Quad *retrieve_instr = NULL;
 
     make_TAC(node->child0, code_list);
 
-    // Then do call
-
-    left = node->symbol;
+    bool returns_value = false;
+    if (returns_value) {
+      // E.place = newtemp(f.returnType);
+      return_val_temp = new_temp("variable");
+      assert(return_val_temp != NULL);
+    }
 
     op_type = TAC_CALL;
+    src1 = new_operand(SYM_TABLE_PTR, func_symbol);
+    src2 = new_operand(INTEGER_CONSTANT, &(func_symbol->number_of_arguments));
+    call_instr = new_instr(op_type, src1, src2, NULL);
 
-    src1 = new_operand(SYM_TABLE_PTR, left);
-    src2 = new_operand(INTEGER_CONSTANT, &(left->number_of_arguments));
+    call_instr->next = *code_list;
+    *code_list = call_instr;
 
-    instruction = new_instr(op_type, src1, src2, NULL);
+    if (return_val_temp != NULL) {
+      op_type = TAC_RETRIEVE;
+      dest = new_operand(SYM_TABLE_PTR, return_val_temp);
+      retrieve_instr = new_instr(op_type, NULL, NULL, dest);
 
-    instruction->next = *code_list;
-    *code_list = instruction;
+      // Prepend RETRIEVE instruction (goes after CALL)
+      retrieve_instr->next = *code_list;
+      *code_list = retrieve_instr;
+    }
 
-    return NULL;
-
+    return return_val_temp;
+  }
   case STMT_LIST:
     debug_tac("STMT_LIST");
     make_TAC(node->child0, code_list);
