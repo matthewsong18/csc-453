@@ -425,6 +425,41 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
     return NULL;
   }
+  case WHILE: {
+    // While statement
+    // child0 -> bool expr (condition)
+    // child1 -> statement (body)
+
+    Quad *Ltop = new_label();
+    Quad *Lbody = new_label();
+    Quad *Lafter = new_label();
+
+    // Emit the Ltop label at the beginning of the loop
+    Ltop->next = *code_list;
+    *code_list = Ltop;
+
+    // Generate code for the boolean condition. If true, jump to Lbody; if
+    // false, jump to Lafter.
+    make_bool(node->child0, Lbody, Lafter, code_list);
+
+    // Emit the Lbody label before the loop body
+    Lbody->next = *code_list;
+    *code_list = Lbody;
+
+    // Generate code for the body of the while loop
+    make_TAC(node->child1, code_list);
+
+    // Generate an unconditional jump back to the top of the loop (Ltop)
+    Quad *gotoLtop = new_instr(TAC_GOTO, NULL, NULL, Ltop->src1);
+    gotoLtop->next = *code_list;
+    *code_list = gotoLtop;
+
+    // Emit the Lafter label after the loop
+    Lafter->next = *code_list;
+    *code_list = Lafter;
+
+    return NULL;
+  }
   default:
     debug_tac("Did not match");
     return NULL;
