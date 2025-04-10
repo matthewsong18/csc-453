@@ -99,6 +99,63 @@ Quad *reverse_tac_list(Quad *head) {
   return prev; // New head of the reversed list
 }
 
+void bool_helper(ASTnode *node, Quad *trueDest, Quad *falseDest, OpType op_type,
+                 Quad **code_list) {
+  Symbol *left = make_TAC(node->child0, code_list);
+  Symbol *right = make_TAC(node->child1, code_list);
+
+  Operand *src1 = new_operand(SYM_TABLE_PTR, left);
+  Operand *src2 = new_operand(SYM_TABLE_PTR, right);
+  Quad *instruction = new_instr(op_type, src1, src2, trueDest->src1);
+
+  instruction->next = *code_list;
+  *code_list = instruction;
+
+  op_type = TAC_GOTO;
+  instruction = NULL;
+  instruction = new_instr(op_type, NULL, NULL, falseDest->src1);
+
+  instruction->next = *code_list;
+  *code_list = instruction;
+}
+
+void make_bool(ASTnode *node, Quad *trueDest, Quad *falseDest,
+               Quad **code_list) {
+
+  OpType op_type = TAC_IF_EQ;
+
+  switch (node->node_type) {
+  case AND: {
+    op_type = TAC_IF_AND;
+  } break;
+  case EQ: {
+    op_type = TAC_IF_EQ;
+  } break;
+  case GE: {
+    op_type = TAC_IF_GE;
+  } break;
+  case GT: {
+    op_type = TAC_IF_GT;
+  } break;
+  case LE: {
+    op_type = TAC_IF_LE;
+  } break;
+  case LT: {
+    op_type = TAC_IF_LT;
+  } break;
+  case NE: {
+    op_type = TAC_IF_NE;
+  } break;
+  case OR: {
+    op_type = TAC_IF_OR;
+  } break;
+  default:
+    break;
+  }
+
+  bool_helper(node, trueDest, falseDest, op_type, code_list);
+}
+
 Symbol *make_TAC(ASTnode *node, Quad **code_list) {
   Symbol *temp = NULL;
   Symbol *left = NULL;
@@ -321,6 +378,53 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
     return NULL;
 
+  case IF: {
+    // If statement
+    // child0 -> bool expr
+    // child1 -> true state
+    // child2 -> false state
+
+    Quad *Lthen = new_label();
+    Quad *Lelse = NULL;
+    Quad *Lafter = new_label();
+
+    if (node->child2 != NULL) {
+      Lelse = new_label();
+      make_bool(node->child0, Lthen, Lelse, code_list);
+    } else {
+      make_bool(node->child0, Lthen, Lafter, code_list);
+    }
+
+    // Emit Lthen label
+    Lthen->next = *code_list;
+    *code_list = Lthen;
+
+    // True state
+    make_TAC(node->child1, code_list);
+
+    // Handle the 'else' block if it exists
+    if (node->child2 != NULL) {
+
+      // Generate a jump to Lafter after the 'then' block so you don't enter
+      // else block after completing true state
+      Quad *gotoLafter = new_instr(TAC_GOTO, NULL, NULL, Lafter->src1);
+      gotoLafter->next = *code_list;
+      *code_list = gotoLafter;
+
+      // Emit the Lelse label
+      Lelse->next = *code_list;
+      *code_list = Lelse;
+
+      // False state
+      make_TAC(node->child2, code_list);
+    }
+
+    // Emit the Lafter label
+    Lafter->next = *code_list;
+    *code_list = Lafter;
+
+    return NULL;
+  }
   default:
     debug_tac("Did not match");
     return NULL;
@@ -439,6 +543,8 @@ void print_quad(Quad *code_list) {
   case TAC_LEAVE:
   case TAC_RETURN:
     break;
+  default:
+    break;
   }
 
   print_quad(code_list->next);
@@ -545,6 +651,16 @@ char *quad_list_to_string(Quad *code_list) {
     case TAC_CALL:
       snprintf(temp_instr_buffer, sizeof(temp_instr_buffer), "call %s, %d\n",
                src1->val.symbol_ptr->name, src2->val.integer_const);
+      break;
+    case TAC_GOTO:
+    case TAC_IF_AND:
+    case TAC_IF_EQ:
+    case TAC_IF_GE:
+    case TAC_IF_GT:
+    case TAC_IF_LE:
+    case TAC_IF_LT:
+    case TAC_IF_NE:
+    case TAC_IF_OR:
       break;
     }
 

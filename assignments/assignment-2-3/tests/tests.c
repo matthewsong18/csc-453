@@ -642,7 +642,8 @@ void test_mips_function_call_println() {
 
 void test_mips_if_stmt() {
 
-  char *test_src = "int main() { int x, y; if (x == y) { } } ";
+  char *test_src =
+      "int main() { int x, y; x = 5; y = 5; if (x == y) { println(x); } } ";
 
   ASTnode *actual_ast = build_ast_for_quad_test(test_src);
 
@@ -663,22 +664,25 @@ void test_mips_if_stmt() {
                                  "    sw $ra, 0($sp)\n"
                                  "    la $fp, 0($sp)\n"
 
-                                 // Allocate space for locals
-                                 "    la $sp, -8($fp)\n"
+                                 "    li $t0, 5\n"
+                                 "    sw $t0, -8($fp)\n"
 
-                                 // t0 = x
+                                 "    li $t1, 5\n"
+                                 "    sw $t1, -12($fp)\n"
+
                                  "    lw $t0, -8($fp)\n"
-
-                                 // t1 = y
                                  "    lw $t1, -12($fp)\n"
-
-                                 // if x == y goto _L0
                                  "    beq $t0, $t1, _L0\n"
 
-                                 // goto _L1
                                  "    j _L1\n"
 
                                  "_L0:\n"
+
+                                 "    lw $t2, -8($fp)\n"
+                                 "    la $sp, -4($sp)\n"
+                                 "    sw $t2, 0($sp)\n"
+                                 "    jal _println\n"
+                                 "    la $sp, 4($sp)\n"
 
                                  "_L1:\n"
 
@@ -686,6 +690,22 @@ void test_mips_if_stmt() {
                                  "    lw $ra, 0($sp)\n"
                                  "    lw $fp, 4($sp)\n"
                                  "    la $sp, 8($sp)\n"
+
+                                 "    jr $ra\n"
+
+                                 ".align 2\n"
+                                 ".data\n"
+                                 "_nl: .asciiz \"\\n\"\n"
+                                 ".align 2\n"
+
+                                 ".text\n"
+                                 "_println:\n"
+                                 "    li $v0, 1\n"
+                                 "    lw $a0, 0($sp)\n"
+                                 "    syscall\n"
+                                 "    li $v0, 4\n"
+                                 "    la $a0, _nl\n"
+                                 "    syscall\n"
 
                                  "    jr $ra\n"
 

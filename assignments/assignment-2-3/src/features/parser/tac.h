@@ -21,6 +21,16 @@ typedef enum {
   TAC_LEAVE,
   TAC_RETURN,
 
+  TAC_GOTO,
+  TAC_IF_AND,
+  TAC_IF_EQ,
+  TAC_IF_GE,
+  TAC_IF_GT,
+  TAC_IF_LE,
+  TAC_IF_LT,
+  TAC_IF_NE,
+  TAC_IF_OR,
+
 } OpType;
 
 typedef enum {

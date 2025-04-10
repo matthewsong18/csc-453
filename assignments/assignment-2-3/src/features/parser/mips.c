@@ -62,18 +62,69 @@ Symbol *reverse_symbol_list(Symbol *head) {
 // END CHANGE 1a
 // ========================================================================
 
-// --- End Helpers ---
+MipsInstruction *load_operand_for_branch(Operand *op, const char *target_reg,
+                                         MipsInstruction *current_mips_head) {
+  char buffer[256];
+  if (!op)
+    return current_mips_head;
+
+  if (op->operand_type == INTEGER_CONSTANT) {
+    snprintf(buffer, sizeof(buffer), "    li %s, %d", target_reg,
+             op->val.integer_const);
+    current_mips_head =
+        append_mips_instr(current_mips_head, new_mips_instr(buffer));
+  } else if (op->operand_type == SYM_TABLE_PTR) {
+    Symbol *sym = op->val.symbol_ptr;
+    char *sym_name = sym->name;
+    bool is_temp = (sym_name[0] == 't' && isdigit(sym_name[1]));
+    bool is_global = (!is_temp && sym->scope == globalScope);
+    bool is_local_or_param = (!is_temp && !is_global);
+
+    if (is_temp) {
+      // Value is already in a temp register (e.g., $t2)
+      char src_reg[10];
+      snprintf(src_reg, sizeof(src_reg), "$%s", sym_name);
+      // Move it to the target register ($t0 or $t1) if different
+      if (strcmp(src_reg, target_reg) != 0) {
+        snprintf(buffer, sizeof(buffer), "    move %s, %s", target_reg,
+                 src_reg);
+        current_mips_head =
+            append_mips_instr(current_mips_head, new_mips_instr(buffer));
+      }
+    } else if (is_global) {
+      // Load from global
+      snprintf(buffer, sizeof(buffer), "    lw %s, _%s", target_reg, sym_name);
+      current_mips_head =
+          append_mips_instr(current_mips_head, new_mips_instr(buffer));
+    } else if (is_local_or_param) {
+      // Load from local/param via offset
+      assert(sym->offset != 0);
+      snprintf(buffer, sizeof(buffer), "    lw %s, %d($fp)", target_reg,
+               sym->offset);
+      current_mips_head =
+          append_mips_instr(current_mips_head, new_mips_instr(buffer));
+    } else { /* Unhandled */
+    }
+  } else { /* Unhandled */
+  }
+  return current_mips_head;
+}
+
+void get_label_str(Operand *label_op, char *label_buffer, size_t buffer_size) {
+  if (label_op && label_op->operand_type == INTEGER_CONSTANT) {
+    // Use "_" prefix for labels to avoid conflicts (as suggested in
+    // 3addr2spim.pdf)
+    snprintf(label_buffer, buffer_size, "_L%d", label_op->val.integer_const);
+  } else {
+    snprintf(label_buffer, buffer_size, "_INVALID_LABEL");
+  }
+}
 
 MipsInstruction *generate_mips(Quad *tac_list) {
   MipsInstruction *mips_head = NULL;
   char buffer[256];
-  // ========================================================================
-  // CHANGE 2a: Add counter for TAC_PARAM loads
-  // ========================================================================
+  char label_str[50];
   int param_load_temp_idx = 1; // Start at 1 for $t1
-  // ========================================================================
-  // END CHANGE 2a
-  // ========================================================================
 
   // --- First Pass: Check for main and println usage ---
   bool main_exists = false;
@@ -378,6 +429,77 @@ MipsInstruction *generate_mips(Quad *tac_list) {
     case TAC_RETURN:
       // ... (Same as before) ...
       mips_head = append_mips_instr(mips_head, new_mips_instr("    jr $ra"));
+      break;
+    case TAC_LABEL: {
+      // TAC: label Lsrc1 (src1->val.integer_const holds label number)
+      assert(src1 && src1->operand_type == INTEGER_CONSTANT);
+      get_label_str(src1, label_str, sizeof(label_str));  // Use src1 now
+      snprintf(buffer, sizeof(buffer), "%s:", label_str); // MIPS label: _Ln:
+      mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+    } break;
+
+    case TAC_GOTO: {
+      // TAC: goto Ldest (dest->val.integer_const holds label number)
+      assert(dest && dest->operand_type == INTEGER_CONSTANT);
+      get_label_str(dest, label_str, sizeof(label_str));
+      snprintf(buffer, sizeof(buffer), "    j %s",
+               label_str); // MIPS jump: j _Ln
+      mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+    } break;
+
+    // Conditional Branches: if src1 relop src2 goto Ldest
+    case TAC_IF_EQ: // if src1 == src2 goto Ldest -> beq $t0, $t1, _Ldest
+    case TAC_IF_NE: // if src1 != src2 goto Ldest -> bne $t0, $t1, _Ldest
+    case TAC_IF_LT: // if src1 <  src2 goto Ldest -> blt $t0, $t1, _Ldest
+    case TAC_IF_LE: // if src1 <= src2 goto Ldest -> ble $t0, $t1, _Ldest
+    case TAC_IF_GT: // if src1 >  src2 goto Ldest -> bgt $t0, $t1, _Ldest
+    case TAC_IF_GE: // if src1 >= src2 goto Ldest -> bge $t0, $t1, _Ldest
+    {
+      assert(src1 && src2 && dest && dest->operand_type == INTEGER_CONSTANT);
+
+      // 1. Load src1 into $t0 using minimal helper
+      mips_head = load_operand_for_branch(src1, "$t0", mips_head);
+      // 2. Load src2 into $t1 using minimal helper
+      mips_head = load_operand_for_branch(src2, "$t1", mips_head);
+      // 3. Get target label string
+      get_label_str(dest, label_str, sizeof(label_str));
+      // 4. Determine MIPS branch instruction
+      char *branch_op;
+      switch (instruction->op) {
+      case TAC_IF_EQ:
+        branch_op = "beq";
+        break;
+      case TAC_IF_NE:
+        branch_op = "bne";
+        break;
+      case TAC_IF_LT:
+        branch_op = "blt";
+        break;
+      case TAC_IF_LE:
+        branch_op = "ble";
+        break;
+      case TAC_IF_GT:
+        branch_op = "bgt";
+        break;
+      case TAC_IF_GE:
+        branch_op = "bge";
+        break;
+      default:
+        branch_op = "###";
+        break; // Should not happen
+      }
+      // 5. Generate the MIPS branch instruction
+      snprintf(buffer, sizeof(buffer), "    %s $t0, $t1, %s", branch_op,
+               label_str);
+      mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
+    } break;
+
+    // Placeholder for AND/OR if implemented - requires specific logic
+    case TAC_IF_AND:
+    case TAC_IF_OR:
+      snprintf(buffer, sizeof(buffer), "# Unhandled TAC Op: %d (AND/OR)",
+               instruction->op);
+      mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
       break;
 
     default:
