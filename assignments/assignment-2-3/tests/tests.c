@@ -714,6 +714,86 @@ void test_mips_if_stmt() {
   assert(strcmp(expected_output_string, actual_output_string) == 0);
 }
 
+void test_mips_while_statement() {
+
+  char *test_src =
+      "int main() { int x; x = 0; while (x < 3) { println(5); x = 5; } }";
+
+  ASTnode *actual_ast = build_ast_for_quad_test(test_src);
+
+  Quad *actual_code_list = NULL;
+  make_TAC(actual_ast, &actual_code_list);
+  actual_code_list = reverse_tac_list(
+      actual_code_list); // Reverse to get correct execution order
+
+  MipsInstruction *mips_list = NULL;
+  mips_list = generate_mips(actual_code_list);
+
+  char *actual_output_string = NULL;
+  actual_output_string = mips_list_to_string(mips_list);
+
+  char *expected_output_string =
+      ".text\n"
+      "_main:\n"
+      "    la $sp, -8($sp)\n"  // Prologue: Allocate space saved regs
+      "    sw $fp, 4($sp)\n"   // Prologue: Save old $fp
+      "    sw $ra, 0($sp)\n"   // Prologue: Save $ra
+      "    la $fp, 0($sp)\n"   // Prologue: Set new $fp
+      "    la $sp, -24($sp)\n" // Prologue: Allocate space locals/temps (1 var +
+                               // 5 temps = 6 * 4)
+      // x = 0; (TAC: t0=0; x=t0;)
+      "    li $t0, 0\n"
+      "    sw $t0, -8($fp)\n" // x = t0 (assuming x @ -8($fp))
+      // Loop Start
+      "_L0:\n" // Ltop
+      // Condition x < 3 (TAC: t1=x; t2=3; if_lt t1, t2, L1; goto L2;)
+      "    lw $t1, -8($fp)\n"   // t1 = x
+      "    li $t2, 3\n"         // t2 = 3
+      "    blt $t1, $t2, _L1\n" // if t1 < t2 goto Lbody (_L1)
+      "    j _L2\n"             // else goto Lafter (_L2)
+      // Loop Body
+      "_L1:\n" // Lbody
+      // println(5); (TAC: t3=5; param t3; call println, 1;)
+      "    li $t3, 5\n"       // t3 = 5 (Argument)
+      "    la $sp, -4($sp)\n" // Push param space
+      "    sw $t3, 0($sp)\n"  // Push t3 (the value 5)
+      "    jal _println\n"    // Call println
+      "    la $sp, 4($sp)\n"  // Pop param space
+      // x = 5; (TAC: t4=5; x=t4;)
+      "    li $t4, 5\n"       // t4 = 5
+      "    sw $t4, -8($fp)\n" // x = t4
+      "    j _L0\n"           // goto Ltop (_L0)
+      // After Loop
+      "_L2:\n" // Lafter
+      // No explicit return statement, proceed to epilogue
+      // Epilogue
+      "    la $sp, 0($fp)\n" // Restore $sp to $fp
+      "    lw $ra, 0($sp)\n" // Restore $ra
+      "    lw $fp, 4($sp)\n" // Restore $fp
+      "    la $sp, 8($sp)\n" // Deallocate saved regs space
+      "    jr $ra\n"         // Return (Note: $v0 value is undefined here)
+      // Println helper code
+      ".align 2\n"
+      ".data\n"
+      "_nl: .asciiz \"\\n\"\n"
+      ".align 2\n"
+      ".text\n"
+      "_println:\n"
+      "    li $v0, 1\n"
+      "    lw $a0, 0($sp)\n"
+      "    syscall\n"
+      "    li $v0, 4\n"
+      "    la $a0, _nl\n"
+      "    syscall\n"
+      "    jr $ra\n"
+      // SPIM Entry point
+      "\nmain: j _main\n";
+
+  assert(strcmp(expected_output_string, actual_output_string) == 0);
+
+  free(actual_output_string);
+}
+
 int main(void) {
   test_quad_func_defn();
   test_quad_assignment();
@@ -731,4 +811,5 @@ int main(void) {
   test_mips_multiple_variables_and_println();
   test_mips_function_call_println();
   test_mips_if_stmt();
+  test_mips_while_statement();
 }
