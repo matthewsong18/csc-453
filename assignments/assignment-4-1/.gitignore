@@ -1,0 +1,7 @@
+obj/
+compile
+build/
+cmake-build-debug
+.idea/
+*.s
+*.pdf

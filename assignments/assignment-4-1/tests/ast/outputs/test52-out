@@ -1,0 +1,13 @@
+func_def: f
+  formals: x, y, z
+  body:
+    {
+        {
+            {
+                f(0, z, 1)
+            }
+        }
+    }
+/* func_def: f */
+
+exit status: 0

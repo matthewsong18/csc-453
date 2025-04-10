@@ -1,0 +1,17 @@
+func_def: f
+  formals: x
+  body:
+    {
+        y = 0
+        if (x != 0):
+        then:
+            while (x > 0):
+                f(x)
+            end_while
+        else:
+        end_if
+        return: y
+    }
+/* func_def: f */
+
+exit status: 0
