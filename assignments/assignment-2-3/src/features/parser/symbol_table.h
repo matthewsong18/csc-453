@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 
-// A symbol represents an identifier along with its type (for our purposes, a string).
 typedef struct Symbol {
     char *name;
     char *type;
@@ -17,7 +16,6 @@ typedef struct Symbol {
     int local_var_bytes;
 } Symbol;
 
-// A scope is a linked list of symbols, with a pointer to its parent scope.
 typedef struct Scope {
     Symbol *symbols;
     struct Scope *parent;

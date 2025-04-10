@@ -31,6 +31,8 @@ typedef enum {
   TAC_IF_NE,
   TAC_IF_OR,
 
+  TAC_SET_RETVAL
+
 } OpType;
 
 typedef enum {

@@ -12,7 +12,6 @@
 extern Scope *globalScope;
 extern Scope *currentScope;
 
-// --- Helper functions: new_mips_instr, append_mips_instr ---
 MipsInstruction *new_mips_instr(const char *instr_text) {
   MipsInstruction *new_instr =
       (MipsInstruction *)malloc(sizeof(MipsInstruction));
@@ -43,9 +42,6 @@ MipsInstruction *append_mips_instr(MipsInstruction *list_head,
   return list_head;
 }
 
-// ========================================================================
-// CHANGE 1a: Add Helper to Reverse Symbol List
-// ========================================================================
 Symbol *reverse_symbol_list(Symbol *head) {
   Symbol *prev = NULL;
   Symbol *current = head;
@@ -58,9 +54,6 @@ Symbol *reverse_symbol_list(Symbol *head) {
   }
   return prev; // New head
 }
-// ========================================================================
-// END CHANGE 1a
-// ========================================================================
 
 MipsInstruction *load_operand_for_branch(Operand *op, const char *target_reg,
                                          MipsInstruction *current_mips_head) {
@@ -81,10 +74,8 @@ MipsInstruction *load_operand_for_branch(Operand *op, const char *target_reg,
     bool is_local_or_param = (!is_temp && !is_global);
 
     if (is_temp) {
-      // Value is already in a temp register (e.g., $t2)
       char src_reg[10];
       snprintf(src_reg, sizeof(src_reg), "$%s", sym_name);
-      // Move it to the target register ($t0 or $t1) if different
       if (strcmp(src_reg, target_reg) != 0) {
         snprintf(buffer, sizeof(buffer), "    move %s, %s", target_reg,
                  src_reg);
@@ -112,8 +103,6 @@ MipsInstruction *load_operand_for_branch(Operand *op, const char *target_reg,
 
 void get_label_str(Operand *label_op, char *label_buffer, size_t buffer_size) {
   if (label_op && label_op->operand_type == INTEGER_CONSTANT) {
-    // Use "_" prefix for labels to avoid conflicts (as suggested in
-    // 3addr2spim.pdf)
     snprintf(label_buffer, buffer_size, "_L%d", label_op->val.integer_const);
   } else {
     snprintf(label_buffer, buffer_size, "_INVALID_LABEL");
@@ -126,7 +115,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
   char label_str[50];
   int param_load_temp_idx = 1; // Start at 1 for $t1
 
-  // --- First Pass: Check for main and println usage ---
   bool main_exists = false;
   bool println_used = false;
   for (Quad *q = tac_list; q != NULL; q = q->next) {
@@ -142,16 +130,11 @@ MipsInstruction *generate_mips(Quad *tac_list) {
     }
   }
 
-  // ========================================================================
-  // CHANGE 1b: Fix Data Section Order (Reverse List before Iterating)
-  // ========================================================================
   bool data_section_added = false;
-  Symbol *original_global_head = globalScope->symbols; // Remember original head
-  Symbol *reversed_globals =
-      reverse_symbol_list(globalScope->symbols); // Reverse the list
+  Symbol *original_global_head = globalScope->symbols;
+  Symbol *reversed_globals = reverse_symbol_list(globalScope->symbols);
 
-  for (Symbol *sym = reversed_globals; sym != NULL;
-       sym = sym->next) { // Iterate the REVERSED list (z -> y -> x)
+  for (Symbol *sym = reversed_globals; sym != NULL; sym = sym->next) {
     if (strcmp(sym->type, "variable") == 0 && sym->name[0] != 't') {
       if (!data_section_added) {
         mips_head = append_mips_instr(mips_head, new_mips_instr(".data"));
@@ -159,20 +142,14 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         data_section_added = true;
       }
       snprintf(buffer, sizeof(buffer), "_%s: .space 4", sym->name);
-      // Append directives (appends _z, then _y, then _x)
+
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
     }
   }
-  // IMPORTANT: Reverse the list back to original order if needed elsewhere
   globalScope->symbols = reverse_symbol_list(reversed_globals);
-  // ========================================================================
-  // END CHANGE 1b
-  // ========================================================================
 
-  // Add the .text section AFTER potential global variables
   mips_head = append_mips_instr(mips_head, new_mips_instr(".text"));
 
-  // --- Second Pass: Generate MIPS for TAC instructions ---
   for (Quad *instruction = tac_list; instruction != NULL;
        instruction = instruction->next) {
     Operand *src1 = instruction->src1;
@@ -180,16 +157,15 @@ MipsInstruction *generate_mips(Quad *tac_list) {
     Operand *dest = instruction->dest;
 
     switch (instruction->op) {
-    case TAC_ENTER: { // Use braces for scope
+    case TAC_ENTER: {
       assert(src1 && src1->operand_type == SYM_TABLE_PTR &&
              src1->val.symbol_ptr);
-      Symbol *func_sym = src1->val.symbol_ptr; // Get the function symbol
+      Symbol *func_sym = src1->val.symbol_ptr;
       const char *func_name = func_sym->name;
 
       snprintf(buffer, sizeof(buffer), "_%s:", func_name);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
 
-      // --- Prologue ---
       mips_head =
           append_mips_instr(mips_head, new_mips_instr("    la $sp, -8($sp)"));
       mips_head =
@@ -199,26 +175,15 @@ MipsInstruction *generate_mips(Quad *tac_list) {
       mips_head =
           append_mips_instr(mips_head, new_mips_instr("    la $fp, 0($sp)"));
 
-      // ============================================================
-      // NEW: Allocate space for locals using calculated size
-      // ============================================================
-      int n_local_bytes = func_sym->local_var_bytes; // <<< Retrieve stored size
+      int n_local_bytes = func_sym->local_var_bytes;
 
       if (n_local_bytes > 0) {
-        snprintf(buffer, sizeof(buffer), "    la $sp, -%d($fp)",
-                 n_local_bytes); // Adjust SP relative to new FP
+        snprintf(buffer, sizeof(buffer), "    la $sp, -%d($fp)", n_local_bytes);
         mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
       }
-      // If n_local_bytes is 0, SP remains correctly pointing below saved RA.
-      // ============================================================
-      // END NEW
-      // ============================================================
 
     } break;
 
-    // ========================================================================
-    // CHANGE 3: Refine TAC_ASSIGN (Keep previous efficient version)
-    // ========================================================================
     case TAC_ASSIGN: {
       assert(dest && dest->operand_type == SYM_TABLE_PTR);
       assert(src1);
@@ -231,18 +196,14 @@ MipsInstruction *generate_mips(Quad *tac_list) {
       bool is_local_dest = (!is_dest_temp && !is_global_dest);
 
       if (is_dest_temp) {
-        // === DESTINATION IS TEMP ($tN) ===
         char dest_reg_mips[10];
-        snprintf(dest_reg_mips, sizeof(dest_reg_mips), "$%s",
-                 dest_name); // e.g., $t2
+        snprintf(dest_reg_mips, sizeof(dest_reg_mips), "$%s", dest_name);
 
         if (src1->operand_type == INTEGER_CONSTANT) {
-          // Temp = Constant --> li $tN, const (Directly load into destination)
           snprintf(buffer, sizeof(buffer), "    li %s, %d", dest_reg_mips,
                    src1->val.integer_const);
           mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
         } else if (src1->operand_type == SYM_TABLE_PTR) {
-          // Temp = Temp / Var ($tN = $tM / x / y)
           Symbol *src_sym = src1->val.symbol_ptr;
           char *src_name = src_sym->name;
           bool is_src_temp = (src_name[0] == 't' && isdigit(src_name[1]));
@@ -250,7 +211,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
           bool is_src_local = (!is_src_temp && !is_src_global);
 
           if (is_src_temp) {
-            // Temp = Temp ($tN = $tM) --> move $tN, $tM (if N != M)
             char src_reg_mips[10];
             snprintf(src_reg_mips, sizeof(src_reg_mips), "$%s", src_name);
             if (strcmp(dest_name, src_name) != 0) {
@@ -259,12 +219,10 @@ MipsInstruction *generate_mips(Quad *tac_list) {
               mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
             }
           } else if (is_src_global) {
-            // Temp = Global ($tN = _x) --> lw $tN, _x
             snprintf(buffer, sizeof(buffer), "    lw %s, _%s", dest_reg_mips,
                      src_name);
             mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
           } else if (is_src_local) {
-            // Temp = Local ($tN = offset($fp)) --> lw $tN, offset($fp)
             assert(src_sym->offset != 0);
             snprintf(buffer, sizeof(buffer), "    lw %s, %d($fp)",
                      dest_reg_mips, src_sym->offset);
@@ -275,13 +233,9 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         }
 
       } else {
-        // === DESTINATION IS VAR (Global or Local) ===
-        char temp_reg_for_store[10] =
-            "$t0"; // Register holding the value to store
+        char temp_reg_for_store[10] = "$t0";
 
-        // Load source value into temp_reg_for_store ($t0 or $tM)
         if (src1->operand_type == INTEGER_CONSTANT) {
-          // Var = Constant --> li $t0, const
           snprintf(buffer, sizeof(buffer), "    li %s, %d", temp_reg_for_store,
                    src1->val.integer_const);
           mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
@@ -293,17 +247,14 @@ MipsInstruction *generate_mips(Quad *tac_list) {
           bool is_src_local = (!is_src_temp && !is_src_global);
 
           if (is_src_temp) {
-            // Var = Temp --> Use $tM directly for store
             snprintf(temp_reg_for_store, sizeof(temp_reg_for_store), "$%s",
                      src_name);
           } else if (is_src_global) {
-            // Var = Global --> lw $t0, _src; use $t0 for store
             snprintf(temp_reg_for_store, sizeof(temp_reg_for_store), "$t0");
             snprintf(buffer, sizeof(buffer), "    lw %s, _%s",
                      temp_reg_for_store, src_name);
             mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
           } else if (is_src_local) {
-            // Var = Local --> lw $t0, offset($fp); use $t0 for store
             assert(src_sym->offset != 0);
             snprintf(temp_reg_for_store, sizeof(temp_reg_for_store), "$t0");
             snprintf(buffer, sizeof(buffer), "    lw %s, %d($fp)",
@@ -314,7 +265,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         } else { /* Unhandled Source Operand Type */
         }
 
-        // Store value from temp_reg_for_store ($t0 or $tM) into destination var
         if (is_global_dest) {
           snprintf(buffer, sizeof(buffer), "    sw %s, _%s", temp_reg_for_store,
                    dest_name);
@@ -328,13 +278,7 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         }
       }
     } break;
-    // ========================================================================
-    // END CHANGE 3
-    // ========================================================================
 
-    // ========================================================================
-    // CHANGE 2b: Fix TAC_PARAM (Use counter for var loads -> $t1, $t3, $t5...)
-    // ========================================================================
     case TAC_PARAM: {
       assert(instruction->src1);
       Operand *param_op = instruction->src1;
@@ -344,7 +288,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         Symbol *param_sym = param_op->val.symbol_ptr;
         char *param_name = param_sym->name;
         bool is_param_temp = (param_name[0] == 't' && isdigit(param_name[1]));
-        // --- Use scope field ---
         bool is_param_global =
             (!is_param_temp && param_sym->scope == globalScope);
         bool is_param_local = (!is_param_temp && !is_param_global);
@@ -352,7 +295,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         if (is_param_temp) {
           snprintf(param_push_reg, sizeof(param_push_reg), "$%s", param_name);
         } else if (is_param_local) {
-          // Param is Local variable -> load into $tN using offset
           const char *load_reg = "$t0";
 
           snprintf(param_push_reg, sizeof(param_push_reg), "%s", load_reg);
@@ -363,16 +305,15 @@ MipsInstruction *generate_mips(Quad *tac_list) {
                   param_sym->offset > 0));
 
           snprintf(buffer, sizeof(buffer), "    lw %s, %d($fp)", load_reg,
-                   param_sym->offset); // Use offset
+                   param_sym->offset);
           mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
 
         } else if (is_param_global) {
-          // Param is Global variable -> load into $tN using label
           char load_reg[10];
           snprintf(load_reg, sizeof(load_reg), "$t%d", param_load_temp_idx);
           snprintf(param_push_reg, sizeof(param_push_reg), "%s", load_reg);
           snprintf(buffer, sizeof(buffer), "    lw %s, _%s", load_reg,
-                   param_name); // Use label
+                   param_name);
           mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
           param_load_temp_idx += 2;
           if (param_load_temp_idx > 7)
@@ -380,7 +321,7 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         } else { /* Should not happen */
         }
       } else if (param_op->operand_type == INTEGER_CONSTANT) {
-        const char *load_reg = "$t0"; // Still use $t0 for constants
+        const char *load_reg = "$t0";
         snprintf(param_push_reg, sizeof(param_push_reg), "%s", load_reg);
         snprintf(buffer, sizeof(buffer), "    li %s, %d", load_reg,
                  param_op->val.integer_const);
@@ -397,7 +338,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
     } break;
 
     case TAC_CALL:
-      // ... (Same as before) ...
       assert(src1 && src1->operand_type == SYM_TABLE_PTR &&
              src1->val.symbol_ptr);
       int n_args = 0;
@@ -415,7 +355,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
       break;
 
     case TAC_LEAVE:
-      // ... (Same as before) ...
       mips_head =
           append_mips_instr(mips_head, new_mips_instr("    la $sp, 0($fp)"));
       mips_head =
@@ -427,43 +366,33 @@ MipsInstruction *generate_mips(Quad *tac_list) {
       break;
 
     case TAC_RETURN:
-      // ... (Same as before) ...
       mips_head = append_mips_instr(mips_head, new_mips_instr("    jr $ra"));
       break;
     case TAC_LABEL: {
-      // TAC: label Lsrc1 (src1->val.integer_const holds label number)
       assert(src1 && src1->operand_type == INTEGER_CONSTANT);
-      get_label_str(src1, label_str, sizeof(label_str));  // Use src1 now
-      snprintf(buffer, sizeof(buffer), "%s:", label_str); // MIPS label: _Ln:
+      get_label_str(src1, label_str, sizeof(label_str));
+      snprintf(buffer, sizeof(buffer), "%s:", label_str);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
     } break;
 
     case TAC_GOTO: {
-      // TAC: goto Ldest (dest->val.integer_const holds label number)
       assert(dest && dest->operand_type == INTEGER_CONSTANT);
       get_label_str(dest, label_str, sizeof(label_str));
-      snprintf(buffer, sizeof(buffer), "    j %s",
-               label_str); // MIPS jump: j _Ln
+      snprintf(buffer, sizeof(buffer), "    j %s", label_str);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
     } break;
 
-    // Conditional Branches: if src1 relop src2 goto Ldest
-    case TAC_IF_EQ: // if src1 == src2 goto Ldest -> beq $t0, $t1, _Ldest
-    case TAC_IF_NE: // if src1 != src2 goto Ldest -> bne $t0, $t1, _Ldest
-    case TAC_IF_LT: // if src1 <  src2 goto Ldest -> blt $t0, $t1, _Ldest
-    case TAC_IF_LE: // if src1 <= src2 goto Ldest -> ble $t0, $t1, _Ldest
-    case TAC_IF_GT: // if src1 >  src2 goto Ldest -> bgt $t0, $t1, _Ldest
-    case TAC_IF_GE: // if src1 >= src2 goto Ldest -> bge $t0, $t1, _Ldest
-    {
+    case TAC_IF_EQ:
+    case TAC_IF_NE:
+    case TAC_IF_LT:
+    case TAC_IF_LE:
+    case TAC_IF_GT:
+    case TAC_IF_GE: {
       assert(src1 && src2 && dest && dest->operand_type == INTEGER_CONSTANT);
 
-      // 1. Load src1 into $t0 using minimal helper
       mips_head = load_operand_for_branch(src1, "$t0", mips_head);
-      // 2. Load src2 into $t1 using minimal helper
       mips_head = load_operand_for_branch(src2, "$t1", mips_head);
-      // 3. Get target label string
       get_label_str(dest, label_str, sizeof(label_str));
-      // 4. Determine MIPS branch instruction
       char *branch_op;
       switch (instruction->op) {
       case TAC_IF_EQ:
@@ -486,17 +415,13 @@ MipsInstruction *generate_mips(Quad *tac_list) {
         break;
       default:
         branch_op = "###";
-        break; // Should not happen
+        break;
       }
-      // 5. Generate the MIPS branch instruction
       snprintf(buffer, sizeof(buffer), "    %s $t0, $t1, %s", branch_op,
                label_str);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
     } break;
 
-    // Placeholder for AND/OR if implemented - requires specific logic
-    case TAC_IF_AND:
-    case TAC_IF_OR:
       snprintf(buffer, sizeof(buffer), "# Unhandled TAC Op: %d (AND/OR)",
                instruction->op);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
@@ -510,33 +435,14 @@ MipsInstruction *generate_mips(Quad *tac_list) {
     }
   }
 
-  // --- Conditionally Append Data Segment and Helpers ---
-
-  // ========================================================================
-  // CHANGE 4: Fix Missing .data before _nl when Globals Exist
-  // ========================================================================
   if (println_used) {
-    // ========================================================================
-    // CHANGE 4 Rev B: Fix Missing .data before _nl
-    // ========================================================================
-    // Always add .align 2 before _nl section
     mips_head = append_mips_instr(mips_head, new_mips_instr(".align 2"));
 
-    // Add .data if it wasn't added for globals OR if it was, ensure we are in
-    // data section The simplest is to just emit .data here always if println
-    // used, as nested .data directives are usually handled fine by assemblers.
-    // Alternatively, only add if !data_section_added, but that failed before.
-    // Let's try always adding it here.
     mips_head = append_mips_instr(mips_head, new_mips_instr(".data"));
 
-    // Now add _nl
     mips_head =
         append_mips_instr(mips_head, new_mips_instr("_nl: .asciiz \"\\n\""));
-    // ========================================================================
-    // END CHANGE 4 Rev B
-    // ========================================================================
 
-    // Add println code in .text section
     mips_head = append_mips_instr(mips_head, new_mips_instr(".align 2"));
     mips_head = append_mips_instr(mips_head, new_mips_instr(".text"));
     mips_head = append_mips_instr(mips_head, new_mips_instr("_println:"));
@@ -551,55 +457,47 @@ MipsInstruction *generate_mips(Quad *tac_list) {
   }
 
   if (main_exists) {
-    mips_head = append_mips_instr(mips_head, new_mips_instr("")); // Spacer
+    mips_head = append_mips_instr(mips_head, new_mips_instr(""));
     mips_head = append_mips_instr(mips_head, new_mips_instr("main: j _main"));
   }
 
   return mips_head;
 }
 
-// --- mips_list_to_string (Simplified Newline Logic) ---
 char *mips_list_to_string(MipsInstruction *mips_list) {
   if (!mips_list) {
     char *empty = malloc(1);
     if (empty)
       empty[0] = '\0';
-    return empty; // Return empty, null-terminated string
+    return empty;
   }
 
-  // --- Calculate total length ---
   size_t total_len = 0;
   for (MipsInstruction *curr = mips_list; curr != NULL; curr = curr->next) {
     if (curr->instruction) {
       total_len += strlen(curr->instruction);
     }
-    total_len += 1; // Add 1 for each newline '\n'
+    total_len += 1;
   }
-  total_len += 1; // Add 1 for the final null terminator '\0'
+  total_len += 1;
 
-  // --- Allocate buffer ---
   char *result_string = (char *)malloc(total_len);
   if (!result_string) {
     perror("Failed to allocate string for MIPS output");
     return NULL;
   }
-  // Ensure buffer starts empty for strcat
   result_string[0] = '\0';
 
-  // --- Concatenate instructions with consistent newlines ---
   for (MipsInstruction *curr = mips_list; curr != NULL; curr = curr->next) {
     if (curr->instruction) {
-      strcat(result_string, curr->instruction); // Append instruction
+      strcat(result_string, curr->instruction);
     }
-    strcat(result_string, "\n"); // ALWAYS append newline
+    strcat(result_string, "\n");
   }
-
-  // The final null terminator is implicitly handled by malloc size + strcat
 
   return result_string;
 }
 
-// --- free_mips_list (Remains the same) ---
 void free_mips_list(MipsInstruction *mips_list) {
   MipsInstruction *current = mips_list;
   MipsInstruction *next = NULL;

@@ -77,7 +77,7 @@ Symbol *create_symbol(const char *name) {
   // Mips stuff
   symbol->offset = 0;
   symbol->scope = NULL;
-  symbol->local_var_bytes = 0; // Only relevant for function symbols later
+  symbol->local_var_bytes = 0;
 
   return symbol;
 }
@@ -96,16 +96,13 @@ bool add_symbol(const char *name, const char *type) {
   }
 
   // Mips logic
-  symbol->scope = currentScope; // Record the scope where symbol is defined
+  symbol->scope = currentScope;
 
-  // Assign stack offset ONLY if it's a variable in a non-global scope
   if (currentScope != globalScope && strcmp(type, "variable") == 0) {
-    symbol->offset =
-        currentScope->current_offset; // Assign the next available offset
-    currentScope->current_offset -=
-        4; // Decrement for the next local (assuming 4-byte ints)
+    symbol->offset = currentScope->current_offset;
+    currentScope->current_offset -= 4;
   } else {
-    symbol->offset = 0; // Globals, functions, temps get offset 0
+    symbol->offset = 0;
   }
   // End mips
 
@@ -142,12 +139,10 @@ bool add_function_formal(const char *name) {
 
   Symbol *argument_ptr = create_symbol(name);
 
-  int parameter_index =
-      function->number_of_arguments; // Get index BEFORE incrementing count
-  argument_ptr->offset = 8 + (parameter_index * 4); // Calculate positive offset
-  argument_ptr->type =
-      strdup("parameter");            // Set type (recommended for clarity)
-  argument_ptr->scope = currentScope; // Associate with function's inner scope
+  int parameter_index = function->number_of_arguments;
+  argument_ptr->offset = 8 + (parameter_index * 4);
+  argument_ptr->type = strdup("parameter");
+  argument_ptr->scope = currentScope;
   if (!argument_ptr->type) {
     fprintf(stderr, "ERROR: memory allocation failure for formal type\n");
     free(argument_ptr->name);

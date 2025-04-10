@@ -96,7 +96,7 @@ Quad *reverse_tac_list(Quad *head) {
     prev = current;
     current = next;
   }
-  return prev; // New head of the reversed list
+  return prev;
 }
 
 void bool_helper(ASTnode *node, Quad *trueDest, Quad *falseDest, OpType op_type,
@@ -230,7 +230,7 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
     return NULL;
 
   case FUNC_DEF:
-    left = node->symbol; // Function symbol ('f', 'g', 'main')
+    left = node->symbol;
 
     // Generate TAC_ENTER for the function
     op_type = TAC_ENTER;
@@ -241,36 +241,20 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
     reset_temp_counter(); // Reset temps for the new function
 
-    // Store the scope that belongs to this function *before* recursing
-    // Note: This assumes pushScope() was called just before make_TAC for
-    // FUNC_DEF
     Scope *function_body_scope = currentScope;
 
     debug_tac("Instruction Set");
-    // Process the function body (statement list)
-    make_TAC(node->child0,
-             code_list); // This recursively calls make_TAC, adding local vars &
-                         // updating function_body_scope->current_offset
+    make_TAC(node->child0, code_list);
 
-    // ============================================================
-    // NEW: Calculate and store local variable size
-    // ============================================================
-    // Calculate size AFTER processing body, using the final offset value
-    // Size = abs(final_offset) - starting_offset_below_fp_ra (which was
-    // abs(-8))
     int total_local_bytes = abs(function_body_scope->current_offset) - 8;
     if (total_local_bytes < 0)
-      total_local_bytes = 0; // Ensure non-negative size
+      total_local_bytes = 0;
 
     // Store the calculated size in the function's symbol entry
     left->local_var_bytes = total_local_bytes;
-    // ============================================================
-    // END NEW
-    // ============================================================
 
     // Generate TAC_LEAVE
     op_type = TAC_LEAVE;
-    // src1 is still the function symbol
     instruction = new_instr(op_type, src1, NULL, NULL);
     instruction->next = *code_list;
     *code_list = instruction;
@@ -320,59 +304,38 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
     // We need to go through the params right to left
 
     // Recurse through right first
-    make_TAC(node->child1,
-             code_list); // Generate code for subsequent parameters first
+    make_TAC(node->child1, code_list);
 
-    // Process the current parameter expression/identifier
-    left = make_TAC(
-        node->child0,
-        code_list); // 'left' holds the symbol resulting from the expression
-                    // (e.g., 'x', 'y', 'z' or a temporary 'tN')
+    left = make_TAC(node->child0, code_list);
 
-    // Check if 'left' is a variable symbol that needs loading (not already a
-    // temporary 'tN')
     bool needs_load = false;
     if (left && left->type && strcmp(left->type, "variable") == 0 &&
         left->name[0] != 't') {
-      // It's a user variable like 'x', 'y', 'z' or a local variable
       needs_load = true;
     }
 
-    Symbol *param_symbol_to_use; // This will hold the symbol (original or new
-                                 // temp) for TAC_PARAM
+    Symbol *param_symbol_to_use;
 
     if (needs_load) {
-      // 1. Create a new temporary to hold the loaded value
-      Symbol *temp_for_load =
-          new_temp("variable"); // e.g., gets t1 (temp_counter increments)
+      Symbol *temp_for_load = new_temp("variable");
 
-      // 2. Generate TAC to load the variable into the temporary (tN = variable)
-      Operand *dest_op = new_operand(SYM_TABLE_PTR, temp_for_load); // dest = t1
-      Operand *src_op = new_operand(SYM_TABLE_PTR, left);           // src1 = x
-      Quad *load_instr =
-          new_instr(TAC_ASSIGN, src_op, NULL, dest_op); // TAC: t1 = x
+      Operand *dest_op = new_operand(SYM_TABLE_PTR, temp_for_load);
+      Operand *src_op = new_operand(SYM_TABLE_PTR, left);
+      Quad *load_instr = new_instr(TAC_ASSIGN, src_op, NULL, dest_op);
 
-      // Prepend the load instruction (so it happens before param)
       load_instr->next = *code_list;
       *code_list = load_instr;
 
-      // 3. Use the new temporary for the TAC_PARAM instruction
       param_symbol_to_use = temp_for_load; // param t1
 
     } else {
-      // 'left' is already a temporary (e.g., result of expression) or constant.
-      // Use it directly.
-      param_symbol_to_use = left; // param tN
+      param_symbol_to_use = left;
     }
 
-    // 4. Generate the TAC_PARAM instruction using the appropriate symbol
     op_type = TAC_PARAM;
     src1 = new_operand(SYM_TABLE_PTR, param_symbol_to_use);
-    instruction =
-        new_instr(op_type, src1, NULL,
-                  NULL); // TAC: param tN (or param x if it wasn't loaded)
+    instruction = new_instr(op_type, src1, NULL, NULL);
 
-    // Prepend the param instruction
     instruction->next = *code_list;
     *code_list = instruction;
 
@@ -460,6 +423,27 @@ Symbol *make_TAC(ASTnode *node, Quad **code_list) {
 
     return NULL;
   }
+  case RETURN: {
+    debug_tac("RETURN");
+    Symbol *return_val_place = NULL;
+    Quad *set_retval_instr = NULL;
+
+    if (node->child0 != NULL) {
+      return_val_place = make_TAC(node->child0, code_list);
+
+      assert(return_val_place != NULL);
+
+      Operand *retval_op = new_operand(SYM_TABLE_PTR, return_val_place);
+      set_retval_instr = new_instr(TAC_SET_RETVAL /* Add this OpType */,
+                                   retval_op, NULL, NULL);
+
+      set_retval_instr->next = *code_list;
+      *code_list = set_retval_instr;
+    }
+
+    return NULL;
+  }
+
   default:
     debug_tac("Did not match");
     return NULL;
@@ -590,7 +574,6 @@ char *append_string(char *buffer, size_t *buffer_size, size_t *current_len,
 
   size_t add_len = strlen(to_add);
 
-  // Check if resize needed (+1 for null terminator)
   if (*current_len + add_len + 1 > *buffer_size) {
     size_t new_size = (*buffer_size == 0)
                           ? (add_len + 128)
@@ -605,7 +588,6 @@ char *append_string(char *buffer, size_t *buffer_size, size_t *current_len,
     *buffer_size = new_size;
   }
 
-  // Append using strcpy for first element or strcat for subsequent ones
   if (*current_len == 0) {
     strcpy(buffer, to_add);
   } else {
@@ -618,7 +600,6 @@ char *append_string(char *buffer, size_t *buffer_size, size_t *current_len,
 char *quad_list_to_string(Quad *code_list) {
 
   if (code_list == NULL) {
-    // Return an empty, allocated string for consistency
     char *empty = malloc(1);
     if (empty)
       empty[0] = '\0';
@@ -697,28 +678,27 @@ char *quad_list_to_string(Quad *code_list) {
     case TAC_IF_NE:
     case TAC_IF_OR:
       break;
+    default:
+      break;
     }
 
-    // Append the formatted instruction string to the main buffer
     if (temp_instr_buffer[0] != '\0') {
       char *new_buffer_ptr = append_string(result_buffer, &buffer_size,
                                            &current_len, temp_instr_buffer);
       if (!new_buffer_ptr) {
-        return NULL; // Allocation failed
+        return NULL;
       }
       result_buffer = new_buffer_ptr;
     }
 
-    current = current->next; // Move to the next instruction
+    current = current->next;
   }
 
-  // If the list was empty or only contained unhandled ops, ensure we return an
-  // empty string
   if (!result_buffer) {
     result_buffer = malloc(1);
     if (result_buffer)
       result_buffer[0] = '\0';
   }
 
-  return result_buffer; // Return the final, correctly sized buffer
+  return result_buffer;
 }
