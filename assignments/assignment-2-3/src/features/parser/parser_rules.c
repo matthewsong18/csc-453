@@ -584,8 +584,9 @@ ASTnode *parse_expr_list_impl(const GrammarRule *rule,
   return create_expr_list_node(arith_node, opt_expr_list_node);
 }
 
-ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
-                              Symbol *function_symbol) {
+ASTnode *
+parse_arith_exp_impl(const GrammarRule *rule,
+                     Symbol *callee_function_symbol) { // Renamed for clarity
   if (!rule->isFirst(rule, currentToken)) {
     report_error(rule->name, "token not in arith_exp first set");
     exit(1);
@@ -594,73 +595,115 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
   // Check for ID
   if (currentToken.type == TOKEN_ID) {
     char *id = capture_identifier();
+    Symbol *found_symbol =
+        NULL; // This will store the symbol we actually find and use
 
-    if (!lookup(id, "variable")) {
-      report_error(rule->name, "could not find ID in symbol table");
-      exit(1);
+    // --- New Lookup Logic ---
+    // 1. Determine the symbol for the function currently being defined.
+    //    WARNING: This lookup is fragile, assumes function symbol is uniquely
+    //    identifiable in parent scope.
+    Symbol *current_defining_function_symbol = NULL;
+    if (currentScope && currentScope->parent) {
+      Symbol *sym_in_parent = currentScope->parent->symbols;
+      while (sym_in_parent != NULL) {
+        if (sym_in_parent->type &&
+            strcmp(sym_in_parent->type, "function") == 0) {
+          // Assuming the first function symbol found is the one we're in.
+          // Might need refinement if multiple functions are at the same level.
+          current_defining_function_symbol = sym_in_parent;
+          break;
+        }
+        sym_in_parent = sym_in_parent->next;
+      }
+      // Note: If current_defining_function_symbol is still NULL here,
+      // we might be inside a block not directly within a function, or the
+      // lookup assumption failed. The code proceeds, potentially only finding
+      // globals/locals.
     }
 
-    if (function_symbol) {
-      Symbol *formal = function_symbol->arguments;
+    // 2. If we know the function we are currently inside, check its formal
+    // parameters first.
+    if (current_defining_function_symbol != NULL) {
+      Symbol *formal = current_defining_function_symbol->arguments;
       while (formal != NULL) {
         if (strcmp(formal->name, id) == 0) {
-          // Make sure that it's the right number of arguments
-          int number_of_args = function_symbol->number_of_arguments;
-          if (number_of_args <= 0) {
-            report_error(rule->name, "wrong number of arguments provided");
-            exit(1);
-          }
-
-          // Update the argument count and return the node
-          function_symbol->number_of_arguments = number_of_args - 1;
-          free(id);
-          debug("return id node");
-          return create_identifier_node(formal);
+          found_symbol = formal; // Found it in the arguments list
+          break;
         }
         formal = formal->next;
       }
+    }
 
-      if (strcmp(function_symbol->name, "println") == 0) {
-        Symbol *id_name = lookup_symbol_in_table(id, "variable");
+    // 3. If not found in formals (or not in a function), look for a variable in
+    // the current scope chain.
+    if (found_symbol == NULL) {
+      found_symbol = lookup_symbol_in_table(id, "variable");
+    }
 
-        if (id_name == NULL) {
-          report_error(rule->name, "Could not find symbol");
-          exit(1);
-        }
-
-        free(id);
-        return create_identifier_node(id_name);
-      }
-      // id was not found within the formals
-      report_error(rule->name, "could not find id in function's formals");
+    // 4. Check if the symbol was found anywhere
+    if (found_symbol == NULL) {
+      // Could add a check for function names here too if needed, see previous
+      // version.
+      report_error(rule->name, "could not find ID (parameter or variable)");
       free(id);
       exit(1);
     }
+    // --- End New Lookup Logic ---
 
-    debug("return id node");
-    Symbol *id_name = lookup_symbol_in_table(id, "variable");
+    // --- Argument Count Handling (when parsing a call argument) ---
+    // If callee_function_symbol is provided, we are parsing an argument to a
+    // call.
+    if (callee_function_symbol != NULL) {
+      // Check if the callee expects more arguments (using your decrementing
+      // strategy)
+      int number_of_args = callee_function_symbol->number_of_arguments;
+      if (chk_decl_flag && number_of_args <= 0 &&
+          strcmp(callee_function_symbol->name, "println") != 0) {
+        // Allow extra args for println, otherwise error if count already hit 0
+        report_error(rule->name,
+                     "too many arguments provided in function call");
+        free(id); // free id before exiting
+        exit(1);
+      }
 
-    if (id_name == NULL) {
-      report_error(rule->name, "Could not find symbol");
-      exit(1);
+      // Decrement argument count as per your strategy (parent function will
+      // restore) Skip decrement for println if you want it to accept variable
+      // args without strict counting
+      if (strcmp(callee_function_symbol->name, "println") != 0) {
+        callee_function_symbol->number_of_arguments = number_of_args - 1;
+      }
+
+      // Basic validation could still occur here (checking if 'id' matches *any*
+      // formal name in callee_function_symbol->arguments), but we use
+      // 'found_symbol' for the AST node.
     }
+    // --- End Argument Count Handling ---
 
+    // Create the AST node using the symbol found (could be parameter or
+    // variable)
     free(id);
-    return create_identifier_node(id_name);
+    debug("return id node");
+    return create_identifier_node(found_symbol);
 
-  } else {
+  } else { // Handle Integer Constant
     if (currentToken.type != TOKEN_INTCON) {
       report_error(rule->name, "unexpected token in intcon");
       exit(1);
     }
-    if (function_symbol) {
-      int number_of_args = function_symbol->number_of_arguments;
-      if (number_of_args <= 0) {
-        report_error(rule->name, "wrong number of arguments provided");
+
+    // --- Argument Count Handling for Constant ---
+    if (callee_function_symbol != NULL) {
+      int number_of_args = callee_function_symbol->number_of_arguments;
+      if (chk_decl_flag && number_of_args <= 0 &&
+          strcmp(callee_function_symbol->name, "println") != 0) {
+        report_error(rule->name, "too many arguments provided (constant)");
         exit(1);
       }
-      function_symbol->number_of_arguments = number_of_args - 1;
+      if (strcmp(callee_function_symbol->name, "println") != 0) {
+        callee_function_symbol->number_of_arguments = number_of_args - 1;
+      }
     }
+    // --- End Argument Count Handling ---
 
     debug("return intconst node");
     int number = 0;
@@ -669,6 +712,7 @@ ASTnode *parse_arith_exp_impl(const GrammarRule *rule,
     return create_intconst_node(number);
   }
 
+  // Should not be reached
   exit(1);
 }
 

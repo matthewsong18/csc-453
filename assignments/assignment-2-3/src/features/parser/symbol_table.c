@@ -141,18 +141,30 @@ bool add_function_formal(const char *name) {
   }
 
   Symbol *argument_ptr = create_symbol(name);
-  if (function->arguments == NULL) {
-    function->arguments = argument_ptr;
-    function->number_of_arguments = 1;
-    return true;
+
+  int parameter_index =
+      function->number_of_arguments; // Get index BEFORE incrementing count
+  argument_ptr->offset = 8 + (parameter_index * 4); // Calculate positive offset
+  argument_ptr->type =
+      strdup("parameter");            // Set type (recommended for clarity)
+  argument_ptr->scope = currentScope; // Associate with function's inner scope
+  if (!argument_ptr->type) {
+    fprintf(stderr, "ERROR: memory allocation failure for formal type\n");
+    free(argument_ptr->name);
+    free(argument_ptr);
+    return false;
   }
 
-  Symbol *last_ptr = function->arguments;
-  while (last_ptr->next != NULL) {
-    last_ptr = last_ptr->next;
+  if (function->arguments == NULL) {
+    function->arguments = argument_ptr;
+  } else {
+    Symbol *last_ptr = function->arguments;
+    while (last_ptr->next != NULL) {
+      last_ptr = last_ptr->next;
+    }
+    last_ptr->next = argument_ptr;
   }
-  last_ptr->next = argument_ptr;
-  function->number_of_arguments = function->number_of_arguments + 1;
+  function->number_of_arguments++;
 
   return true;
 }

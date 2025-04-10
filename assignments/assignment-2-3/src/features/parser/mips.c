@@ -138,8 +138,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
       snprintf(buffer, sizeof(buffer), "_%s:", func_name);
       mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
 
-      param_load_temp_idx = 1;
-
       // --- Prologue ---
       mips_head =
           append_mips_instr(mips_head, new_mips_instr("    la $sp, -8($sp)"));
@@ -304,16 +302,19 @@ MipsInstruction *generate_mips(Quad *tac_list) {
           snprintf(param_push_reg, sizeof(param_push_reg), "$%s", param_name);
         } else if (is_param_local) {
           // Param is Local variable -> load into $tN using offset
-          char load_reg[10];
-          snprintf(load_reg, sizeof(load_reg), "$t%d", param_load_temp_idx);
+          const char *load_reg = "$t0";
+
           snprintf(param_push_reg, sizeof(param_push_reg), "%s", load_reg);
-          assert(param_sym->offset != 0);
+
+          assert(param_sym->offset != 0 ||
+                 (param_sym->type &&
+                  strcmp(param_sym->type, "parameter") == 0 &&
+                  param_sym->offset > 0));
+
           snprintf(buffer, sizeof(buffer), "    lw %s, %d($fp)", load_reg,
                    param_sym->offset); // Use offset
           mips_head = append_mips_instr(mips_head, new_mips_instr(buffer));
-          param_load_temp_idx += 2; // Use t1, t3, t5...
-          if (param_load_temp_idx > 7)
-            param_load_temp_idx = 1;
+
         } else if (is_param_global) {
           // Param is Global variable -> load into $tN using label
           char load_reg[10];
