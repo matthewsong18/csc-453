@@ -1,0 +1,33 @@
+func_def: f
+  formals: 
+  body:
+    {
+        {
+            x = 0
+        }
+    }
+/* func_def: f */
+
+func_def: g
+  formals: y
+  body:
+    {
+        {
+            x = y
+        }
+    }
+/* func_def: g */
+
+func_def: h
+  formals: x, y
+  body:
+    {
+        {
+            {
+                x = y
+            }
+        }
+    }
+/* func_def: h */
+
+exit status: 0

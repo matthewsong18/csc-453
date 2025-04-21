@@ -1,0 +1,49 @@
+func_def: f
+  formals: x
+  body:
+    {
+        if (x > 0):
+        then:
+            f(0)
+        else:
+        end_if
+    }
+/* func_def: f */
+
+func_def: g
+  formals: x, y
+  body:
+    {
+        if (x > 0):
+        then:
+            g(x, y)
+        else:
+        end_if
+    }
+/* func_def: g */
+
+func_def: h
+  formals: x
+  body:
+    {
+        if (x > 0):
+        then:
+        else:
+            f(0)
+        end_if
+    }
+/* func_def: h */
+
+func_def: i
+  formals: x, y
+  body:
+    {
+        if (x > 0):
+        then:
+        else:
+            g(x, y)
+        end_if
+    }
+/* func_def: i */
+
+exit status: 0

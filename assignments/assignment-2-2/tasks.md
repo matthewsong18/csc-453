@@ -2,9 +2,10 @@
 
 ## Tasks
 
-- Check whether the symbol table cares about function or variable for names. If
-  the name exists, irrelevant of whether the name is for a function or variable,
-  should the check fail?
+- Need to create the helper functions
 
-- Change lookup to just look through the linked list then check parent linked
-  lists automatically in one function
+- Need to modify parser to use func_call, func_defn, and stmt_list ASTnodes
+
+- Check that fn_call needs chk_decl flag or not
+
+- Do I need to check formals when looking up a function?

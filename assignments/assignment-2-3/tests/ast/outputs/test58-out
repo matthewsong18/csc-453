@@ -1,0 +1,22 @@
+func_def: f
+  formals: x, y
+  body:
+    {
+        if (x > 0):
+        then:
+            {
+                if (y != x):
+                then:
+                    {
+                        x = y
+                    }
+                else:
+                end_if
+            }
+        else:
+        end_if
+        return: 
+    }
+/* func_def: f */
+
+exit status: 0

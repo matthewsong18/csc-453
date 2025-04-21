@@ -1,0 +1,9 @@
+func_def: f
+  formals: x, y
+  body:
+    {
+        y = x
+    }
+/* func_def: f */
+
+exit status: 0
