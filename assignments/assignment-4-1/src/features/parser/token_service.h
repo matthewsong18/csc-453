@@ -26,19 +26,20 @@ typedef enum {
   TOKEN_OPLT,
   TOKEN_OPGE,
   TOKEN_OPGT,
-} TokenType;
+} token_type;
 
 typedef struct {
-  TokenType type;
+  token_type type;
   int line; // Line number (for error reporting)
   char *lexeme;
-} TokenI;
+} token_data;
 
 // Scanner function declarations.
-TokenI getNextToken(void);
+token_data getNextToken(void);
 void advanceToken(void);
-bool match(TokenType expected);
-TokenI peekToken(void);
+bool match(token_type expected);
+token_data peekToken(void);
+token_data next_token(void);
 
 // Scanner function.
 extern int get_token(void);
@@ -47,6 +48,6 @@ extern int get_token(void);
 extern int currentLine;
 
 // Global current token.
-extern TokenI currentToken;
+extern token_data currentToken;
 
 #endif

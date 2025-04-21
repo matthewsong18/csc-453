@@ -10,7 +10,7 @@
 typedef struct GrammarRule GrammarRule;
 
 // Define function pointer types for clarity
-typedef bool (*IsSetFn)(const GrammarRule *rule, TokenI token);
+typedef bool (*IsSetFn)(const GrammarRule *rule, token_data token);
 typedef ASTnode *(*ParseFn)(const GrammarRule *rule);
 typedef ASTnode *(*ParseFnExtra)(const GrammarRule *rule, void *extra);
 
@@ -28,25 +28,25 @@ struct GrammarRule {
   };
 
   // Data for FIRST and FOLLOW sets
-  TokenType *firstSet;  // Array of token types in FIRST set
+  token_type *firstSet;  // Array of token types in FIRST set
   int firstCount;       // Size of FIRST set
-  TokenType *followSet; // Array of token types in FOLLOW set
+  token_type *followSet; // Array of token types in FOLLOW set
   int followCount;      // Size of FOLLOW set
 
   const char *name; // Rule name for error reporting
 };
 
 // Function to create and initialize a grammar rule
-GrammarRule *create_rule(const char *name, const TokenType *firstSet,
-                         int firstCount, const TokenType *followSet,
+GrammarRule *create_rule(const char *name, const token_type *firstSet,
+                         int firstCount, const token_type *followSet,
                          int followCount, void *parseFn, bool hasExtraArg);
 
 // Implementation of FIRST and FOLLOW checking
-bool is_first_impl(const GrammarRule *rule, TokenI token);
-bool is_follow_impl(const GrammarRule *rule, TokenI token);
+bool is_first_impl(const GrammarRule *rule, token_data token);
+bool is_follow_impl(const GrammarRule *rule, token_data token);
 
 // Function to check if a token is in a set
-bool token_in_set(TokenI token, const TokenType *set, int count);
+bool token_in_set(token_data token, const token_type *set, int count);
 
 // Function to get a rule by name (for rule dependencies)
 GrammarRule *get_rule(const char *name);

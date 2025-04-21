@@ -166,7 +166,7 @@ ASTnode *parse_prog_impl(const GrammarRule *rule) {
 
 ASTnode *parse_decl_or_func_impl(const GrammarRule *rule) {
 
-  TokenI lookahead_token = peekToken();
+  token_data lookahead_token = peekToken();
   // Check next token is in FIRST set
   if (!rule->isFirst(rule, lookahead_token)) {
     report_error(rule->name, "lookahead token does not match first set");
@@ -467,7 +467,7 @@ ASTnode *parse_stmt_impl(const GrammarRule *rule) {
 }
 
 ASTnode *parse_assg_or_fn_impl(const GrammarRule *rule) {
-  TokenI lookahead_token = peekToken();
+  token_data lookahead_token = peekToken();
 
   if (!rule->isFirst(rule, lookahead_token)) {
     report_error(rule->name, "token not part of assg_or_fn first set");
@@ -478,8 +478,8 @@ ASTnode *parse_assg_or_fn_impl(const GrammarRule *rule) {
     debug("assg_or_fn calls assg_stmt");
     const GrammarRule *assg_stmt = get_rule("assg_stmt");
     return assg_stmt->parse(assg_stmt);
-
-  } else if (lookahead_token.type == TOKEN_LPAREN) {
+  }
+  if (lookahead_token.type == TOKEN_LPAREN) {
     debug("assg_or_fn calls fn_call");
     const GrammarRule *fn_call = get_rule("fn_call");
     return fn_call->parse(fn_call);
@@ -962,75 +962,75 @@ void init_grammar_rules(void) {
   // Define FIRST and FOLLOW sets for rules
 
   // FIRST sets
-  const TokenType arith_exp_first[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType assg_or_fn_first[] = {TOKEN_OPASSG, TOKEN_LPAREN};
-  const TokenType assg_stmt_first[] = {TOKEN_OPASSG};
-  const TokenType bool_exp_first[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType decl_or_func_first[] = {TOKEN_COMMA, TOKEN_LPAREN,
+  const token_type arith_exp_first[] = {TOKEN_ID, TOKEN_INTCON};
+  const token_type assg_or_fn_first[] = {TOKEN_OPASSG, TOKEN_LPAREN};
+  const token_type assg_stmt_first[] = {TOKEN_OPASSG};
+  const token_type bool_exp_first[] = {TOKEN_ID, TOKEN_INTCON};
+  const token_type decl_or_func_first[] = {TOKEN_COMMA, TOKEN_LPAREN,
                                           TOKEN_SEMI};
-  const TokenType expr_list_first[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType fn_call_first[] = {TOKEN_LPAREN};
-  const TokenType formals_first[] = {TOKEN_COMMA};
-  const TokenType func_defn_first[] = {TOKEN_LPAREN};
-  const TokenType id_list_first[] = {TOKEN_COMMA};
-  const TokenType if_stmt_first[] = {TOKEN_KWIF};
-  const TokenType opt_expr_list_first[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType opt_formals_first[] = {TOKEN_KWINT};
-  const TokenType opt_stmt_list_first[] = {TOKEN_ID,       TOKEN_KWIF,
+  const token_type expr_list_first[] = {TOKEN_ID, TOKEN_INTCON};
+  const token_type fn_call_first[] = {TOKEN_LPAREN};
+  const token_type formals_first[] = {TOKEN_COMMA};
+  const token_type func_defn_first[] = {TOKEN_LPAREN};
+  const token_type id_list_first[] = {TOKEN_COMMA};
+  const token_type if_stmt_first[] = {TOKEN_KWIF};
+  const token_type opt_expr_list_first[] = {TOKEN_ID, TOKEN_INTCON};
+  const token_type opt_formals_first[] = {TOKEN_KWINT};
+  const token_type opt_stmt_list_first[] = {TOKEN_ID,       TOKEN_KWIF,
                                            TOKEN_KWRETURN, TOKEN_LBRACE,
                                            TOKEN_SEMI,     TOKEN_KWWHILE};
-  const TokenType opt_var_decl_first[] = {TOKEN_KWINT};
-  const TokenType prog_first[] = {TOKEN_KWINT};
-  const TokenType relop_first[] = {TOKEN_OPEQ, TOKEN_OPNE, TOKEN_OPLE,
+  const token_type opt_var_decl_first[] = {TOKEN_KWINT};
+  const token_type prog_first[] = {TOKEN_KWINT};
+  const token_type relop_first[] = {TOKEN_OPEQ, TOKEN_OPNE, TOKEN_OPLE,
                                    TOKEN_OPLT, TOKEN_OPGE, TOKEN_OPGT};
-  const TokenType return_stmt_first[] = {TOKEN_KWRETURN};
-  const TokenType stmt_first[] = {TOKEN_ID,     TOKEN_KWIF, TOKEN_KWRETURN,
+  const token_type return_stmt_first[] = {TOKEN_KWRETURN};
+  const token_type stmt_first[] = {TOKEN_ID,     TOKEN_KWIF, TOKEN_KWRETURN,
                                   TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE};
-  const TokenType type_first[] = {TOKEN_KWINT};
-  const TokenType var_decl_first[] = {TOKEN_COMMA, TOKEN_SEMI};
-  const TokenType while_stmt_first[] = {TOKEN_KWWHILE};
+  const token_type type_first[] = {TOKEN_KWINT};
+  const token_type var_decl_first[] = {TOKEN_COMMA, TOKEN_SEMI};
+  const token_type while_stmt_first[] = {TOKEN_KWWHILE};
 
   // FOLLOW sets
-  const TokenType arith_exp_follow[] = {TOKEN_SEMI, TOKEN_OPEQ,  TOKEN_OPNE,
+  const token_type arith_exp_follow[] = {TOKEN_SEMI, TOKEN_OPEQ,  TOKEN_OPNE,
                                         TOKEN_OPLE, TOKEN_OPLT,  TOKEN_OPGE,
                                         TOKEN_OPGT, TOKEN_COMMA, TOKEN_RPAREN};
-  const TokenType assg_or_fn_follow[] = {
+  const token_type assg_or_fn_follow[] = {
       TOKEN_KWELSE, TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN,
       TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
-  const TokenType assg_stmt_follow[] = {
+  const token_type assg_stmt_follow[] = {
       TOKEN_KWELSE, TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN,
       TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
-  const TokenType bool_exp_follow[] = {TOKEN_RPAREN};
-  const TokenType decl_or_func_follow[] = {TOKEN_KWINT, TOKEN_EOF};
-  const TokenType expr_list_follow[] = {TOKEN_RPAREN};
-  const TokenType fn_call_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
+  const token_type bool_exp_follow[] = {TOKEN_RPAREN};
+  const token_type decl_or_func_follow[] = {TOKEN_KWINT, TOKEN_EOF};
+  const token_type expr_list_follow[] = {TOKEN_RPAREN};
+  const token_type fn_call_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
                                       TOKEN_KWRETURN, TOKEN_LBRACE, TOKEN_SEMI,
                                       TOKEN_KWWHILE,  TOKEN_RBRACE};
-  const TokenType formals_follow[] = {TOKEN_RPAREN};
-  const TokenType func_defn_follow[] = {TOKEN_KWINT, TOKEN_EOF};
-  const TokenType id_list_follow[] = {TOKEN_SEMI};
-  const TokenType if_stmt_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
+  const token_type formals_follow[] = {TOKEN_RPAREN};
+  const token_type func_defn_follow[] = {TOKEN_KWINT, TOKEN_EOF};
+  const token_type id_list_follow[] = {TOKEN_SEMI};
+  const token_type if_stmt_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
                                       TOKEN_KWRETURN, TOKEN_LBRACE, TOKEN_SEMI,
                                       TOKEN_KWWHILE,  TOKEN_RBRACE};
-  const TokenType opt_expr_list_follow[] = {TOKEN_RPAREN};
-  const TokenType opt_formals_follow[] = {TOKEN_RPAREN};
-  const TokenType opt_stmt_list_follow[] = {TOKEN_RBRACE};
-  const TokenType opt_var_decls_follow[] = {
+  const token_type opt_expr_list_follow[] = {TOKEN_RPAREN};
+  const token_type opt_formals_follow[] = {TOKEN_RPAREN};
+  const token_type opt_stmt_list_follow[] = {TOKEN_RBRACE};
+  const token_type opt_var_decls_follow[] = {
       TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN, TOKEN_LBRACE,
       TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
-  const TokenType prog_follow[] = {TOKEN_EOF};
-  const TokenType relop_follow[] = {TOKEN_ID, TOKEN_INTCON};
-  const TokenType return_stmt_follow[] = {
+  const token_type prog_follow[] = {TOKEN_EOF};
+  const token_type relop_follow[] = {TOKEN_ID, TOKEN_INTCON};
+  const token_type return_stmt_follow[] = {
       TOKEN_KWELSE, TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN,
       TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
-  const TokenType stmt_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
+  const token_type stmt_follow[] = {TOKEN_KWELSE,   TOKEN_ID,     TOKEN_KWIF,
                                    TOKEN_KWRETURN, TOKEN_LBRACE, TOKEN_SEMI,
                                    TOKEN_KWWHILE,  TOKEN_RBRACE};
-  const TokenType type_follow[] = {TOKEN_ID};
-  const TokenType var_decl_follow[] = {TOKEN_KWINT,    TOKEN_ID,     TOKEN_KWIF,
+  const token_type type_follow[] = {TOKEN_ID};
+  const token_type var_decl_follow[] = {TOKEN_KWINT,    TOKEN_ID,     TOKEN_KWIF,
                                        TOKEN_KWRETURN, TOKEN_LBRACE, TOKEN_SEMI,
                                        TOKEN_KWWHILE,  TOKEN_RBRACE, TOKEN_EOF};
-  const TokenType while_stmt_follow[] = {
+  const token_type while_stmt_follow[] = {
       TOKEN_KWELSE, TOKEN_ID,   TOKEN_KWIF,    TOKEN_KWRETURN,
       TOKEN_LBRACE, TOKEN_SEMI, TOKEN_KWWHILE, TOKEN_RBRACE};
 

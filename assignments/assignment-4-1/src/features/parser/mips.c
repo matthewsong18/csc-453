@@ -131,7 +131,6 @@ MipsInstruction *generate_mips(Quad *tac_list) {
   }
 
   bool data_section_added = false;
-  Symbol *original_global_head = globalScope->symbols;
   Symbol *reversed_globals = reverse_symbol_list(globalScope->symbols);
 
   for (Symbol *sym = reversed_globals; sym != NULL; sym = sym->next) {

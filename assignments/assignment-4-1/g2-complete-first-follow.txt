@@ -1,0 +1,77 @@
+FIRST sets:
+  actuals_list:   opSUB ID INTCON LPAREN
+  actuals_list_tail:   COMMA <epsilon>
+  and_exp:   opSUB ID INTCON LPAREN
+  and_exp_prime:   opAND <epsilon>
+  arith_exp:   opSUB ID INTCON LPAREN
+  arith_exp_prime:   opADD opSUB <epsilon>
+  assg_stmt:   opASSG
+  bool_exp:   opSUB ID INTCON LPAREN
+  bool_exp_prime:   opOR <epsilon>
+  decl:   kwINT
+  decl_list:   <epsilon> kwINT
+  decl_prime:   COMMA SEMI LPAREN
+  factor:   opSUB ID INTCON LPAREN
+  fn_call:   ID
+  formals_list:   kwINT
+  formals_list_tail:   COMMA <epsilon>
+  func_defn:   LPAREN
+  local_decl:   kwINT
+  matched_stmt:   kwIF LBRACE ID SEMI kwWHILE kwRETURN
+  opt_actuals:   <epsilon> opSUB ID INTCON LPAREN
+  opt_formals:   <epsilon> kwINT
+  opt_var_decls:   <epsilon> kwINT
+  primary_exp:   ID INTCON LPAREN
+  prog:   <epsilon> kwINT
+  relational_exp:   opSUB ID INTCON LPAREN
+  relop:   opEQ opNE opLE opLT opGE opGT
+  return_stmt:   kwRETURN
+  stmt:   kwIF LBRACE ID SEMI kwWHILE kwRETURN
+  stmt_list:   kwIF LBRACE ID SEMI <epsilon> kwWHILE kwRETURN
+  term:   opSUB ID INTCON LPAREN
+  term_prime:   opMUL opDIV <epsilon>
+  type:   kwINT
+  unmatched_stmt:   kwIF kwWHILE
+  var_decl_list_tail:   COMMA <epsilon>
+  while_stmt:   kwWHILE
+  while_stmt_matched:   kwWHILE
+  while_stmt_unmatched:   kwWHILE
+
+FOLLOW sets:
+  actuals_list:   RPAREN
+  actuals_list_tail:   RPAREN
+  and_exp:   opOR RPAREN
+  and_exp_prime:   opOR RPAREN
+  arith_exp:   COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  arith_exp_prime:   COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  assg_stmt:   SEMI
+  bool_exp:   RPAREN
+  bool_exp_prime:   RPAREN
+  decl:   kwINT <EOF>
+  decl_list:   <EOF>
+  decl_prime:   kwINT <EOF>
+  factor:   opMUL opDIV opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  fn_call:   SEMI opMUL opDIV opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND opOR
+  formals_list:   RPAREN
+  formals_list_tail:   RPAREN
+  func_defn:   kwINT <EOF>
+  local_decl:   kwINT kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  matched_stmt:   kwELSE kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  opt_actuals:   RPAREN
+  opt_formals:   RPAREN
+  opt_var_decls:   kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  primary_exp:   opMUL opDIV opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  prog:   <EOF>
+  relational_exp:   opAND opOR RPAREN
+  relop:   opSUB ID INTCON LPAREN
+  return_stmt:   kwELSE kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  stmt:   kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  stmt_list:   RBRACE
+  term:   opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  term_prime:   opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  type:   ID
+  unmatched_stmt:   kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  var_decl_list_tail:   SEMI
+  while_stmt:   -EMPTYSET-
+  while_stmt_matched:   kwELSE kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE
+  while_stmt_unmatched:   kwIF LBRACE ID SEMI kwWHILE kwRETURN RBRACE

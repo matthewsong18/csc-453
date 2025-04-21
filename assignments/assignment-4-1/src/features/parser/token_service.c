@@ -7,15 +7,15 @@
 extern char *lexeme;
 extern bool DEBUG_ON;
 // Global current token.
-TokenI currentToken;
+token_data currentToken;
 
-static TokenI peekedToken;
+static token_data peekedToken;
 static bool hasPeekedToken = false;
 
 // Call scanner
-TokenI getNextToken(void) {
+token_data getNextToken(void) {
   int tok = get_token();
-  TokenI token;
+  token_data token;
 
   switch (tok) {
   case EOF:
@@ -95,7 +95,7 @@ TokenI getNextToken(void) {
   return token;
 }
 
-TokenI peekToken(void) {
+token_data peekToken(void) {
   if (!hasPeekedToken) {
     peekedToken = getNextToken();
     hasPeekedToken = true;
@@ -117,8 +117,12 @@ void advanceToken(void) {
   }
 }
 
+token_data next_token(void) {
+  return getNextToken();
+}
+
 // Checks that the current token matches the expected type; if so, advances.
-bool match(const TokenType expected) {
+bool match(const token_type expected) {
   // printf("Trying to match token type %d with expected %d\n",
   // currentToken.type,
   //        expected);

@@ -42,8 +42,10 @@ Operand *new_operand(OperandType op_type, void *value) {
 }
 
 int temp_counter = 0;
+static int label_num = 0;
 
 void reset_temp_counter() { temp_counter = 0; }
+void reset_label_counter() { label_num = 0; }
 
 // Based on lecture slide 05
 Symbol *new_temp(char *type) {
@@ -78,7 +80,6 @@ Quad *new_instr(OpType opType, Operand *src1, Operand *src2, Operand *dest) {
   return new_instr;
 }
 
-static int label_num = 0;
 Quad *new_label() {
   Operand *src1 = new_operand(INTEGER_CONSTANT, &label_num);
   label_num++;

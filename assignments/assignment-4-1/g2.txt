@@ -2,44 +2,47 @@
 %start prog
 %%
 
-prog : func_defn   prog
-     | var_decl   prog
+prog : type ID decl_or_func prog
      | /* epsilon */
      ;
 
-var_decl : type id_list SEMI
+decl_or_func : COMMA ID var_decl
+    | func_defn
+    | SEMI
     ;
 
-id_list : ID
-        | ID COMMA id_list
+var_decl : id_list SEMI
+    ;
+
+id_list : COMMA ID id_list
+    | /* epsilon */
     ;
      
 type : kwINT
     ;
 
-func_defn : type ID LPAREN opt_formals RPAREN LBRACE opt_var_decls opt_stmt_list RBRACE
+func_defn : LPAREN opt_formals RPAREN LBRACE opt_var_decls opt_stmt_list RBRACE
     ;
 
 opt_formals : /* epsilon */
-            | formals
+            | type ID formals
     ;
 
-formals : type ID COMMA formals
-        | type ID
+formals : COMMA type ID formals
+        | /* epsilon */
     ;
 
 opt_var_decls : /* epsilon */
-            | var_decl opt_var_decls
+            | type ID var_decl opt_var_decls
     ;
 
 opt_stmt_list : stmt opt_stmt_list
     | /* epsilon */
     ;
 
-stmt : fn_call
+stmt : ID assg_or_fn
     | while_stmt
     | if_stmt
-    | assg_stmt
     | return_stmt
     | LBRACE opt_stmt_list RBRACE
     | SEMI
@@ -56,10 +59,14 @@ return_stmt : kwRETURN SEMI
     | kwRETURN arith_exp SEMI
     ;
 
-assg_stmt : ID opASSG arith_exp SEMI
+assg_or_fn : assg_stmt
+    | fn_call
     ;
 
-fn_call : ID LPAREN opt_expr_list RPAREN SEMI
+assg_stmt : opASSG arith_exp SEMI
+    ;
+
+fn_call : LPAREN opt_expr_list RPAREN SEMI
     ;
 
 opt_expr_list : /* epsilon */

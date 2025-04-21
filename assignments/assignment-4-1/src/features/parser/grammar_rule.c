@@ -12,7 +12,7 @@
 static GrammarRule **rules = NULL;
 static int rule_count = 0;
 
-bool token_in_set(const TokenI token, const TokenType *set, const int count) {
+bool token_in_set(const token_data token, const token_type *set, const int count) {
   for (int i = 0; i < count; i++) {
     if (token.type == set[i])
       return true;
@@ -20,11 +20,11 @@ bool token_in_set(const TokenI token, const TokenType *set, const int count) {
   return false;
 }
 
-bool is_first_impl(const GrammarRule *rule, const TokenI token) {
+bool is_first_impl(const GrammarRule *rule, const token_data token) {
   return token_in_set(token, rule->firstSet, rule->firstCount);
 }
 
-bool is_follow_impl(const GrammarRule *rule, const TokenI token) {
+bool is_follow_impl(const GrammarRule *rule, const token_data token) {
   return token_in_set(token, rule->followSet, rule->followCount);
 }
 
@@ -36,13 +36,13 @@ void report_error(const char *ruleName, const char *message) {
 }
 
 // Helper function to allocate a token set
-static TokenType *allocate_token_set(const TokenType *sourceSet,
+static token_type *allocate_token_set(const token_type *sourceSet,
                                      const int count) {
   if (count <= 0) {
     return NULL;
   }
 
-  TokenType *set = malloc(count * sizeof(TokenType));
+  token_type *set = malloc(count * sizeof(token_type));
   if (!set) {
     fprintf(stderr, "ERROR: memory allocation failure for token set\n");
     return NULL;
@@ -119,8 +119,8 @@ static void cleanup_rule(GrammarRule *rule) {
 }
 
 // Function to create and initialize a grammar rule
-GrammarRule *create_rule(const char *name, const TokenType *firstSet,
-                         const int firstCount, const TokenType *followSet,
+GrammarRule *create_rule(const char *name, const token_type *firstSet,
+                         const int firstCount, const token_type *followSet,
                          const int followCount, void *parseFn,
                          bool hasExtraArg) {
   // Initialize the basic rule structure

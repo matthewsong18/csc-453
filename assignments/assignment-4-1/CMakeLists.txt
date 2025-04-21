@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.10)
 # Project name
 project(Compiler)
 
+set(CMAKE_C_STANDARD 11)
+
 # Add flags for compilation (optional, add as needed)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -g")
 
@@ -27,7 +29,7 @@ add_executable(compile
 )
 
 # If you have tests you want to build as a separate executable:
-add_executable(run_tests
+add_executable(test_mips
   tests/tests.c
   # Include other necessary source files for the test executable
   src/features/parser/ast.c
@@ -46,6 +48,19 @@ add_executable(run_tests
   src/features/scanner/scanner.c
 )
 
-# Include directories (if your headers aren't found automatically)
-# target_include_directories(my_parser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/parser)
-# target_include_directories(run_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/parser) # If needed for tests
+add_executable(test_complete
+        tests/test-complete-parser.c
+        src/features/parser/simple-parse.c
+        src/features/scanner/complex.c
+        src/features/scanner/keywords.c
+        src/features/scanner/operators.c
+        src/features/scanner/punctuation.c
+        src/features/scanner/scanner.c
+        src/features/parser/token_service.c
+)
+
+find_package(cmocka REQUIRED)
+
+target_link_libraries(test_complete PRIVATE cmocka::cmocka)
+
+target_include_directories(test_complete PRIVATE ${CMocka_INCLUDE_DIRS})
