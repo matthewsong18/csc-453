@@ -442,6 +442,66 @@ static void test_return_statement(void **state) {
   assert_int_equal(1, parser_exit_result); // Expect failure
 }
 
+static void test_function_call_in_expression(void **state) {
+  (void) state;
+  int parser_exit_result;
+
+  // --- Valid Function Calls in Expressions ---
+
+  // Function call on RHS of assignment
+  const char *assign_rhs = "int f() { x = foo(); }";
+  parser_exit_result = test_parser(assign_rhs);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  // and parse_opt_actuals handles empty args '()'
+  assert_int_equal(0, parser_exit_result);
+
+  // Function call within arithmetic expression
+  const char *arith_expr = "int f() { x = 1 + bar() * 2; }";
+  parser_exit_result = test_parser(arith_expr);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  assert_int_equal(0, parser_exit_result);
+
+  // Function call within condition
+  const char *condition = "int f() { if (baz() > 0) { } }";
+  parser_exit_result = test_parser(condition);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  assert_int_equal(0, parser_exit_result);
+
+  // Function call as return value
+  const char *return_val = "int f() { return getValue(); }";
+  parser_exit_result = test_parser(return_val);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  assert_int_equal(0, parser_exit_result);
+
+  // Function call with arguments (placeholder for now)
+  // const char *with_args = "int f() { x = calculate(a, 10); }";
+  // parser_exit_result = test_parser(with_args);
+  // // NOTE: This will FAIL until parse_opt_actuals is implemented
+  // assert_int_equal(0, parser_exit_result);
+
+
+  // --- Error Cases ---
+
+  // Missing closing parenthesis in expression context
+  const char *err1 = "int f() { x = 1 + foo(; }";
+  parser_exit_result = test_parser(err1);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  assert_int_equal(1, parser_exit_result);
+
+  // Invalid token after function call in expression
+  const char *err2 = "int f() { x = foo() + ; }";
+  parser_exit_result = test_parser(err2);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  assert_int_equal(1, parser_exit_result);
+
+  // Function call statement syntax used incorrectly in expression
+  const char *err3 = "int f() { x = foo(); + 1; }"; // Semicolon is wrong here
+  parser_exit_result = test_parser(err3);
+  // NOTE: This will FAIL until parse_primary_exp handles fn_call
+  assert_int_equal(1, parser_exit_result);
+
+}
+
 bool DEBUG_ON = false;
 
 int main(void) {
@@ -459,6 +519,7 @@ int main(void) {
     cmocka_unit_test(test_arithmetic_expressions),
     cmocka_unit_test(test_boolean_logic),
     cmocka_unit_test(test_return_statement),
+    cmocka_unit_test(test_function_call_in_expression),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);
