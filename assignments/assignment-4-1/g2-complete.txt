@@ -48,12 +48,11 @@ stmt_list : stmt stmt_list
           | /* epsilon */
           ;
 
-stmt : if_stmt
+stmt : ID assg_or_fn_stmt
+	 | if_stmt
      | while_stmt
      | return_stmt
      | LBRACE stmt_list RBRACE
-     | ID assg_stmt SEMI
-     | fn_call SEMI
      | SEMI
      ;
 
@@ -71,10 +70,11 @@ return_stmt : kwRETURN SEMI
             | kwRETURN arith_exp SEMI
             ;
 
-assg_stmt : opASSG arith_exp
-          ;
+assg_or_fn_stmt : opASSG arith_exp SEMI      
+                | LPAREN opt_actuals RPAREN SEMI 
+                ;
 
-fn_call : ID LPAREN opt_actuals RPAREN
+fn_call : ID LPAREN opt_actuals RPAREN 
         ;
 
 opt_actuals : /* epsilon */
