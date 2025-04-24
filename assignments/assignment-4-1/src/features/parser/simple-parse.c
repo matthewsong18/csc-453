@@ -18,6 +18,8 @@ parse_data *parse_while_stmt(parse_data *data);
 parse_data *parse_return_stmt(parse_data *data);
 parse_data *parse_stmt_after_id(parse_data *data);
 parse_data *parse_opt_actuals(parse_data *data);
+parse_data *parse_actuals_list(parse_data *data);      // Added
+parse_data *parse_actuals_list_tail(parse_data *data); // Added
 parse_data *parse_arith_exp(parse_data *data);
 parse_data *parse_term(parse_data *data);
 parse_data *parse_factor(parse_data *data);
@@ -274,7 +276,6 @@ parse_data *parse_stmt(parse_data *data) {
   } else {
     data->exit_status = 1;
   }
-  // Add final check before returning
   if (bad_exit(data)) {
     return data;
   }
@@ -295,7 +296,7 @@ parse_data *parse_stmt_after_id(parse_data *data) {
     update_data_to_next_token(data);
   } else if (in_first_set(TOKEN_LPAREN, data)) {
     update_data_to_next_token(data);
-    data = parse_opt_actuals(data);
+    data = parse_opt_actuals(data); // Call implemented version
     if (bad_exit(data)) {
       return data;
     }
@@ -391,7 +392,50 @@ parse_data *parse_return_stmt(parse_data *data) {
   return data;
 }
 
-parse_data *parse_opt_actuals(parse_data *data) { return data; }
+// --- Implementation for Function Call Arguments ---
+
+parse_data *parse_actuals_list_tail(parse_data *data) {
+  while (!bad_exit(data) && in_first_set(TOKEN_COMMA, data)) {
+    update_data_to_next_token(data); // Consume COMMA
+
+    // Check if an expression starts after the comma
+    if (!is_first_of_arith_exp(data)) {
+      // Error: Trailing comma or missing expression after comma
+      data->exit_status = 1;
+      return data;
+    }
+
+    data = parse_arith_exp(data); // Parse the next argument expression
+    if (bad_exit(data)) {
+      return data;
+    }
+  }
+  // Check for trailing comma error after the loop
+  if (!bad_exit(data) && in_first_set(TOKEN_COMMA, data)) {
+    data->exit_status = 1; // Error: Trailing comma detected
+  }
+  return data; // Epsilon case or after processing list
+}
+
+parse_data *parse_actuals_list(parse_data *data) {
+  data = parse_arith_exp(data); // Parse the first argument expression
+  if (bad_exit(data)) {
+    return data;
+  }
+  data = parse_actuals_list_tail(data); // Parse the rest (COMMA arith_exp)*
+  return data;
+}
+
+parse_data *parse_opt_actuals(parse_data *data) {
+  // Check if the current token can start an expression (the first argument)
+  if (is_first_of_arith_exp(data)) {
+    data = parse_actuals_list(data);
+  }
+  // else: Epsilon case - no arguments, do nothing
+  return data;
+}
+
+// --- End Implementation for Function Call Arguments ---
 
 parse_data *parse_primary_exp(parse_data *data) {
   if (in_first_set(TOKEN_ID, data)) {
@@ -399,7 +443,7 @@ parse_data *parse_primary_exp(parse_data *data) {
     data = parse_primary_exp_after_id(data);
     if (bad_exit(data)) {
       return data;
-    } // Added check
+    }
   } else if (in_first_set(TOKEN_INTCON, data)) {
     update_data_to_next_token(data);
   } else if (in_first_set(TOKEN_LPAREN, data)) {
@@ -422,7 +466,7 @@ parse_data *parse_primary_exp(parse_data *data) {
 parse_data *parse_primary_exp_after_id(parse_data *data) {
   if (in_first_set(TOKEN_LPAREN, data)) {
     update_data_to_next_token(data);
-    data = parse_opt_actuals(data);
+    data = parse_opt_actuals(data); // Call implemented version
     if (bad_exit(data)) {
       return data;
     }
@@ -469,7 +513,6 @@ parse_data *parse_term(parse_data *data) {
     return data;
   }
   data = parse_term_prime(data);
-  // >>> ADDED MISSING CHECK <<<
   if (bad_exit(data)) {
     return data;
   }
@@ -494,7 +537,6 @@ parse_data *parse_arith_exp(parse_data *data) {
     return data;
   }
   data = parse_arith_exp_prime(data);
-  // >>> ADDED MISSING CHECK <<<
   if (bad_exit(data)) {
     return data;
   }

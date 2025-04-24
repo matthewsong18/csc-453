@@ -1,20 +1,20 @@
+#include "../src/features/parser/simple-parse.h"
+#include "../src/features/scanner/scanner.h"
+
 #include <setjmp.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <cmocka.h>
 
-#include "../src/features/scanner/scanner.h"
-#include "../src/features/parser/simple-parse.h"
-
-static int test_parser(const char * test_input_string) {
+static int test_parser(const char *test_input_string) {
   scanner_init_with_string(test_input_string);
 
   return parse();
 }
 
 static void test_global_variable(void **state) {
-  (void) state;
+  (void)state;
 
   const char *basic_ok_global_var = "int x;";
   int parser_exit_result = test_parser(basic_ok_global_var);
@@ -46,21 +46,21 @@ static void test_global_variable(void **state) {
 }
 
 static void test_chained_global_variable(void **state) {
-  (void) state;
+  (void)state;
 
-  const char *basic_valid = "int x, int y, int z;";
+  const char *basic_valid = "int x, y, z;";
   int parser_exit_result = test_parser(basic_valid);
   assert_int_equal(0, parser_exit_result);
 
-  const char *missing_id = "int x, int , int z;";
+  const char *missing_id = "int x, , z;";
   parser_exit_result = test_parser(missing_id);
   assert_int_equal(1, parser_exit_result);
 
-  const char *missing_semi = "int x, int y, int z";
+  const char *missing_semi = "int x, y, z";
   parser_exit_result = test_parser(missing_semi);
   assert_int_equal(1, parser_exit_result);
 
-  const char *random_function_defn = "int x, int y, int f();";
+  const char *random_function_defn = "int x, y, f();";
   parser_exit_result = test_parser(random_function_defn);
   assert_int_equal(1, parser_exit_result);
 }
@@ -102,7 +102,7 @@ static void test_function_definition(void **state) {
 }
 
 static void test_function_call(void **state) {
-  (void) state;
+  (void)state;
 
   const char *basic_valid = "int f();";
   int parser_exit_result = test_parser(basic_valid);
@@ -122,7 +122,7 @@ static void test_function_call(void **state) {
 }
 
 static void test_formals(void **state) {
-  (void) state;
+  (void)state;
 
   const char *basic_valid = "int f(int x) { }";
   int parser_exit_result = test_parser(basic_valid);
@@ -146,7 +146,7 @@ static void test_formals(void **state) {
 }
 
 static void test_assignment(void **state) {
-  (void) state;
+  (void)state;
 
   const char *basic_valid = "int f() { x = 1; }";
   int parser_exit_result = test_parser(basic_valid);
@@ -170,7 +170,7 @@ static void test_assignment(void **state) {
 }
 
 static void test_if_statement(void **state) {
-  (void) state;
+  (void)state;
 
   const char *less_equal = "int f() { if (y <= x) { } }";
   int parser_exit_result = test_parser(less_equal);
@@ -204,13 +204,14 @@ static void test_if_statement(void **state) {
   parser_exit_result = test_parser(invalid_operator);
   assert_int_equal(1, parser_exit_result);
 
-  const char *nested_if_statements = "int f() { if (x == z) { if (z != y) { } } }";
+  const char *nested_if_statements =
+      "int f() { if (x == z) { if (z != y) { } } }";
   parser_exit_result = test_parser(nested_if_statements);
   assert_int_equal(0, parser_exit_result);
 }
 
 static void test_while_statement(void **state) {
-  (void) state;
+  (void)state;
 
   const char *valid = "int f() { while (z > y) { } }";
   int parser_exit_result = test_parser(valid);
@@ -222,7 +223,7 @@ static void test_while_statement(void **state) {
 }
 
 static void test_else_statement(void **state) {
-  (void) state;
+  (void)state;
 
   const char *valid = "int f() { if (x > y) { } else { } }";
   int parser_exit_result = test_parser(valid);
@@ -230,9 +231,9 @@ static void test_else_statement(void **state) {
 }
 
 static void test_local_variable(void **state) {
-  (void) state;
+  (void)state;
 
-  const char *valid = "int f() { int x; int y; int a, int b, int z; }";
+  const char *valid = "int f() { int x; int y; int a, b, z; }";
   int parser_exit_result = test_parser(valid);
   assert_int_equal(0, parser_exit_result);
 
@@ -250,7 +251,7 @@ static void test_local_variable(void **state) {
 }
 
 static void test_arithmetic_expressions(void **state) {
-  (void) state;
+  (void)state;
   int parser_exit_result;
 
   // --- Basic Binary Operations ---
@@ -271,24 +272,29 @@ static void test_arithmetic_expressions(void **state) {
   assert_int_equal(0, parser_exit_result); // Expect success
 
   // --- Precedence (* / before + -) ---
-  const char *prec1 = "int f() { x = a + b * c; }"; // Should parse as a + (b * c)
+  const char *prec1 =
+      "int f() { x = a + b * c; }"; // Should parse as a + (b * c)
   parser_exit_result = test_parser(prec1);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *prec2 = "int f() { x = a * b - c; }"; // Should parse as (a * b) - c
+  const char *prec2 =
+      "int f() { x = a * b - c; }"; // Should parse as (a * b) - c
   parser_exit_result = test_parser(prec2);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *prec3 = "int f() { x = a / b + c * d; }"; // Should parse as (a / b) + (c * d)
+  const char *prec3 =
+      "int f() { x = a / b + c * d; }"; // Should parse as (a / b) + (c * d)
   parser_exit_result = test_parser(prec3);
   assert_int_equal(0, parser_exit_result); // Expect success
 
   // --- Associativity (Left-to-right for +, -, *, /) ---
-  const char *assoc1 = "int f() { x = a - b + c; }"; // Should parse as (a - b) + c
+  const char *assoc1 =
+      "int f() { x = a - b + c; }"; // Should parse as (a - b) + c
   parser_exit_result = test_parser(assoc1);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *assoc2 = "int f() { x = a / b * c; }"; // Should parse as (a / b) * c
+  const char *assoc2 =
+      "int f() { x = a / b * c; }"; // Should parse as (a / b) * c
   parser_exit_result = test_parser(assoc2);
   assert_int_equal(0, parser_exit_result); // Expect success
 
@@ -308,11 +314,14 @@ static void test_arithmetic_expressions(void **state) {
   // --- Unary Minus (Needs Factor rule update) ---
   const char *unary1 = "int f() { x = -a; }";
   parser_exit_result = test_parser(unary1);
-  assert_int_equal(0, parser_exit_result); // Expect success (Will fail until factor rule is updated)
+  assert_int_equal(0, parser_exit_result); // Expect success (Will fail until
+                                           // factor rule is updated)
 
-  const char *unary2 = "int f() { x = b * -c; }"; // Needs precedence handling for unary vs binary
+  const char *unary2 = "int f() { x = b * -c; }"; // Needs precedence handling
+                                                  // for unary vs binary
   parser_exit_result = test_parser(unary2);
-  assert_int_equal(0, parser_exit_result); // Expect success (Will fail until factor rule is updated)
+  assert_int_equal(0, parser_exit_result); // Expect success (Will fail until
+                                           // factor rule is updated)
 
   // --- Error Cases ---
   const char *err1 = "int f() { x = a + ; }"; // Missing operand
@@ -337,7 +346,7 @@ static void test_arithmetic_expressions(void **state) {
 }
 
 static void test_boolean_logic(void **state) {
-  (void) state;
+  (void)state;
   int parser_exit_result;
 
   // --- Basic Logical Operations (Assumes Relational Ops Work) ---
@@ -350,20 +359,25 @@ static void test_boolean_logic(void **state) {
   assert_int_equal(0, parser_exit_result); // Expect success
 
   // --- Precedence (&& before ||) ---
-  const char *prec1 = "int f() { if (a || b && c) { } }"; // Should parse as a || (b && c)
+  const char *prec1 =
+      "int f() { if (a || b && c) { } }"; // Should parse as a || (b && c)
   parser_exit_result = test_parser(prec1);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *prec2 = "int f() { if (a && b || c && d) { } }"; // Should parse as (a && b) || (c && d)
+  const char *prec2 =
+      "int f() { if (a && b || c && d) { } }"; // Should parse as (a && b) || (c
+                                               // && d)
   parser_exit_result = test_parser(prec2);
   assert_int_equal(0, parser_exit_result); // Expect success
 
   // --- Associativity (Left-to-right for &&, ||) ---
-  const char *assoc1 = "int f() { if (a || b || c) { } }"; // Should parse as (a || b) || c
+  const char *assoc1 =
+      "int f() { if (a || b || c) { } }"; // Should parse as (a || b) || c
   parser_exit_result = test_parser(assoc1);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *assoc2 = "int f() { if (a && b && c) { } }"; // Should parse as (a && b) && c
+  const char *assoc2 =
+      "int f() { if (a && b && c) { } }"; // Should parse as (a && b) && c
   parser_exit_result = test_parser(assoc2);
   assert_int_equal(0, parser_exit_result); // Expect success
 
@@ -381,7 +395,9 @@ static void test_boolean_logic(void **state) {
   parser_exit_result = test_parser(mixed1);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *mixed2 = "int f() { if (x == y + 1 || z * 2 > 5) { } }"; // Requires working arith exp too
+  const char *mixed2 =
+      "int f() { if (x == y + 1 || z * 2 > 5) { } }"; // Requires working arith
+                                                      // exp too
   parser_exit_result = test_parser(mixed2);
   assert_int_equal(0, parser_exit_result); // Expect success
 
@@ -394,17 +410,19 @@ static void test_boolean_logic(void **state) {
   parser_exit_result = test_parser(err2);
   assert_int_equal(1, parser_exit_result); // Expect failure
 
-  const char *err3 = "int f() { if (a && || b) { } }"; // Adjacent logical operators
+  const char *err3 =
+      "int f() { if (a && || b) { } }"; // Adjacent logical operators
   parser_exit_result = test_parser(err3);
   assert_int_equal(1, parser_exit_result); // Expect failure
 
-  const char *err4 = "int f() { if ((a && b) { } }"; // Missing closing parenthesis
+  const char *err4 =
+      "int f() { if ((a && b) { } }"; // Missing closing parenthesis
   parser_exit_result = test_parser(err4);
   assert_int_equal(1, parser_exit_result); // Expect failure
 }
 
 static void test_return_statement(void **state) {
-  (void) state;
+  (void)state;
 
   // --- Valid Return Statements ---
   const char *ret_no_val = "int f() { return; }";
@@ -415,35 +433,40 @@ static void test_return_statement(void **state) {
   parser_exit_result = test_parser(ret_intcon);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *ret_id = "int f() { int x; x=1; return x; }"; // Need local var support
+  const char *ret_id =
+      "int f() { int x; x=1; return x; }"; // Need local var support
   parser_exit_result = test_parser(ret_id);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *ret_expr = "int f() { return a + b * 3; }"; // Needs full arith exp support
+  const char *ret_expr =
+      "int f() { return a + b * 3; }"; // Needs full arith exp support
   parser_exit_result = test_parser(ret_expr);
   assert_int_equal(0, parser_exit_result); // Expect success
 
-  const char *err3 = "int f() { return(a+b); }"; // Parentheses not part of return stmt syntax
+  const char *err3 =
+      "int f() { return(a+b); }"; // Parentheses not part of return stmt syntax
   parser_exit_result = test_parser(err3);
-  assert_int_equal(0, parser_exit_result); // Expect failure (unless expr parser handles it)
+  assert_int_equal(
+      0, parser_exit_result); // Expect failure (unless expr parser handles it)
 
   // --- Error Cases ---
   const char *err1 = "int f() { return }"; // Missing semicolon
   parser_exit_result = test_parser(err1);
   assert_int_equal(1, parser_exit_result); // Expect failure
 
-  const char *err2 = "int f() { return + ; }"; // Invalid expression after return
+  const char *err2 =
+      "int f() { return + ; }"; // Invalid expression after return
   parser_exit_result = test_parser(err2);
   assert_int_equal(1, parser_exit_result); // Expect failure
 
-
-  const char *err4 = "int f() { return return; }"; // Keyword instead of expression/semicolon
+  const char *err4 =
+      "int f() { return return; }"; // Keyword instead of expression/semicolon
   parser_exit_result = test_parser(err4);
   assert_int_equal(1, parser_exit_result); // Expect failure
 }
 
 static void test_function_call_in_expression(void **state) {
-  (void) state;
+  (void)state;
   int parser_exit_result;
 
   // --- Valid Function Calls in Expressions ---
@@ -479,7 +502,6 @@ static void test_function_call_in_expression(void **state) {
   // // NOTE: This will FAIL until parse_opt_actuals is implemented
   // assert_int_equal(0, parser_exit_result);
 
-
   // --- Error Cases ---
 
   // Missing closing parenthesis in expression context
@@ -499,27 +521,95 @@ static void test_function_call_in_expression(void **state) {
   parser_exit_result = test_parser(err3);
   // NOTE: This will FAIL until parse_primary_exp handles fn_call
   assert_int_equal(1, parser_exit_result);
+}
 
+static void test_function_call_arguments(void **state) {
+  (void)state;
+
+  // --- Valid Function Calls with Arguments ---
+
+  // Call with no arguments (re-test for clarity)
+  const char *no_args = "int f() { foo(); }";
+  int parser_exit_result = test_parser(no_args);
+  // NOTE: This should already pass if fn_call in expression works
+  assert_int_equal(0, parser_exit_result);
+
+  // Call with one integer literal argument
+  const char *one_int_arg = "int f() { foo(10); }";
+  parser_exit_result = test_parser(one_int_arg);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(0, parser_exit_result);
+
+  // Call with one identifier argument
+  const char *one_id_arg = "int f() { int x; foo(x); }";
+  parser_exit_result = test_parser(one_id_arg);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(0, parser_exit_result);
+
+  // Call with one expression argument
+  const char *one_expr_arg = "int f() { foo(a + b * 2); }";
+  parser_exit_result = test_parser(one_expr_arg);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(0, parser_exit_result);
+
+  // Call with multiple arguments (mixed types)
+  const char *multi_args = "int f() { bar(1, x, a + b * 2); }";
+  parser_exit_result = test_parser(multi_args);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(0, parser_exit_result);
+
+  // Call used within an expression with arguments
+  const char *call_in_expr_args = "int f() { x = 1 + calculate(y, 5); }";
+  parser_exit_result = test_parser(call_in_expr_args);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(0, parser_exit_result);
+
+  // --- Error Cases ---
+
+  // Missing closing parenthesis after arguments
+  const char *err1 = "int f() { foo(a, b ; }";
+  parser_exit_result = test_parser(err1);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(1, parser_exit_result);
+
+  // Missing comma between arguments
+  const char *err2 = "int f() { foo(a b); }";
+  parser_exit_result = test_parser(err2);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(1, parser_exit_result);
+
+  // Trailing comma
+  const char *err3 = "int f() { foo(a, b, ); }";
+  parser_exit_result = test_parser(err3);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(1, parser_exit_result);
+
+  // Invalid expression as argument
+  const char *err4 = "int f() { foo(a, *); }";
+  parser_exit_result = test_parser(err4);
+  // NOTE: Will FAIL until parse_opt_actuals is implemented
+  assert_int_equal(1, parser_exit_result);
 }
 
 bool DEBUG_ON = false;
 
 int main(void) {
   const struct CMUnitTest tests[] = {
-    cmocka_unit_test(test_global_variable),
-    cmocka_unit_test(test_chained_global_variable),
-    cmocka_unit_test(test_function_definition),
-    cmocka_unit_test(test_function_call),
-    cmocka_unit_test(test_formals),
-    cmocka_unit_test(test_assignment),
-    cmocka_unit_test(test_if_statement),
-    cmocka_unit_test(test_while_statement),
-    cmocka_unit_test(test_else_statement),
-    cmocka_unit_test(test_local_variable),
-    cmocka_unit_test(test_arithmetic_expressions),
-    cmocka_unit_test(test_boolean_logic),
-    cmocka_unit_test(test_return_statement),
-    cmocka_unit_test(test_function_call_in_expression),
+      cmocka_unit_test(test_global_variable),
+      cmocka_unit_test(test_chained_global_variable),
+      cmocka_unit_test(test_function_definition),
+      cmocka_unit_test(test_function_call),
+      cmocka_unit_test(test_formals),
+      cmocka_unit_test(test_assignment),
+      cmocka_unit_test(test_if_statement),
+      cmocka_unit_test(test_while_statement),
+      cmocka_unit_test(test_else_statement),
+      cmocka_unit_test(test_local_variable),
+      cmocka_unit_test(test_arithmetic_expressions),
+      cmocka_unit_test(test_boolean_logic),
+      cmocka_unit_test(test_return_statement),
+      cmocka_unit_test(test_function_call_in_expression),
+      cmocka_unit_test(test_function_call_arguments),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);
