@@ -167,6 +167,10 @@ static void test_assignment(void **state) {
   const char *missing_semi = "int f() { y = 1 }";
   parser_exit_result = test_parser(missing_semi);
   assert_int_equal(1, parser_exit_result);
+
+  const char *missing_op = "int main() { x = y z; }";
+  parser_exit_result = test_parser(missing_op);
+  assert_int_equal(1, parser_exit_result);
 }
 
 static void test_if_statement(void **state) {
