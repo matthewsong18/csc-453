@@ -306,13 +306,13 @@ static void test_arithmetic_expressions(void **state) {
   assert_int_equal(0, parser_exit_result); // Expect success
 
   // --- Unary Minus (Needs Factor rule update) ---
-  // const char *unary1 = "int f() { x = -a; }";
-  // parser_exit_result = test_parser(unary1);
-  // assert_int_equal(0, parser_exit_result); // Expect success (Will fail until factor rule is updated)
+  const char *unary1 = "int f() { x = -a; }";
+  parser_exit_result = test_parser(unary1);
+  assert_int_equal(0, parser_exit_result); // Expect success (Will fail until factor rule is updated)
 
-  // const char *unary2 = "int f() { x = b * -c; }"; // Needs precedence handling for unary vs binary
-  // parser_exit_result = test_parser(unary2);
-  // assert_int_equal(0, parser_exit_result); // Expect success (Will fail until factor rule is updated)
+  const char *unary2 = "int f() { x = b * -c; }"; // Needs precedence handling for unary vs binary
+  parser_exit_result = test_parser(unary2);
+  assert_int_equal(0, parser_exit_result); // Expect success (Will fail until factor rule is updated)
 
   // --- Error Cases ---
   const char *err1 = "int f() { x = a + ; }"; // Missing operand
@@ -336,6 +336,73 @@ static void test_arithmetic_expressions(void **state) {
   assert_int_equal(1, parser_exit_result); // Expect failure
 }
 
+static void test_boolean_logic(void **state) {
+  (void) state;
+  int parser_exit_result;
+
+  // --- Basic Logical Operations (Assumes Relational Ops Work) ---
+  const char *and_op = "int f() { if (a < b && c > d) { } }";
+  parser_exit_result = test_parser(and_op);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *or_op = "int f() { if (a == b || c != d) { } }";
+  parser_exit_result = test_parser(or_op);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  // --- Precedence (&& before ||) ---
+  const char *prec1 = "int f() { if (a || b && c) { } }"; // Should parse as a || (b && c)
+  parser_exit_result = test_parser(prec1);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *prec2 = "int f() { if (a && b || c && d) { } }"; // Should parse as (a && b) || (c && d)
+  parser_exit_result = test_parser(prec2);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  // --- Associativity (Left-to-right for &&, ||) ---
+  const char *assoc1 = "int f() { if (a || b || c) { } }"; // Should parse as (a || b) || c
+  parser_exit_result = test_parser(assoc1);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *assoc2 = "int f() { if (a && b && c) { } }"; // Should parse as (a && b) && c
+  parser_exit_result = test_parser(assoc2);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  // --- Parentheses ---
+  const char *paren1 = "int f() { if ((a || b) && c) { } }";
+  parser_exit_result = test_parser(paren1);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *paren2 = "int f() { if (a && (b || c)) { } }";
+  parser_exit_result = test_parser(paren2);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  // --- Mixed Relational / Logical ---
+  const char *mixed1 = "int f() { if (x > y && y <= z) { } }";
+  parser_exit_result = test_parser(mixed1);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *mixed2 = "int f() { if (x == y + 1 || z * 2 > 5) { } }"; // Requires working arith exp too
+  parser_exit_result = test_parser(mixed2);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  // --- Error Cases ---
+  const char *err1 = "int f() { if (a && ) { } }"; // Missing operand
+  parser_exit_result = test_parser(err1);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+
+  const char *err2 = "int f() { if ( || b) { } }"; // Missing operand
+  parser_exit_result = test_parser(err2);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+
+  const char *err3 = "int f() { if (a && || b) { } }"; // Adjacent logical operators
+  parser_exit_result = test_parser(err3);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+
+  const char *err4 = "int f() { if ((a && b) { } }"; // Missing closing parenthesis
+  parser_exit_result = test_parser(err4);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+}
+
 bool DEBUG_ON = false;
 
 int main(void) {
@@ -351,6 +418,7 @@ int main(void) {
     cmocka_unit_test(test_else_statement),
     cmocka_unit_test(test_local_variable),
     cmocka_unit_test(test_arithmetic_expressions),
+    cmocka_unit_test(test_boolean_logic),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);

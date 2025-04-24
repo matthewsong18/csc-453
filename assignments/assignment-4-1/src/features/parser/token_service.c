@@ -85,6 +85,18 @@ token_data getNextToken(void) {
   case opGT:
     token.type = TOKEN_OPGT;
     break;
+  case opADD:
+    token.type = TOKEN_OPADD;
+    break;
+  case opSUB:
+    token.type = TOKEN_OPSUB;
+    break;
+  case opMUL:
+    token.type = TOKEN_OPMUL;
+    break;
+  case opDIV:
+    token.type = TOKEN_OPDIV;
+    break;
   default:
     token.type = TOKEN_UNDEF;
     break;
