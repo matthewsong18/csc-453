@@ -15,6 +15,7 @@ parse_data *parse_stmt(parse_data *data);
 parse_data *parse_if_stmt(parse_data *data);
 parse_data *parse_else_part(parse_data *data);
 parse_data *parse_while_stmt(parse_data *data);
+parse_data *parse_return_stmt(parse_data *data); // Added
 parse_data *parse_stmt_after_id(parse_data *data);
 parse_data *parse_opt_actuals(parse_data *data);
 parse_data *parse_arith_exp(parse_data *data);
@@ -23,11 +24,11 @@ parse_data *parse_factor(parse_data *data);
 parse_data *parse_primary_exp(parse_data *data);
 parse_data *parse_arith_exp_prime(parse_data *data);
 parse_data *parse_term_prime(parse_data *data);
-parse_data *parse_bool_exp(parse_data *data);         // Added
-parse_data *parse_bool_exp_prime(parse_data *data);   // Added
-parse_data *parse_and_exp(parse_data *data);          // Added
-parse_data *parse_and_exp_prime(parse_data *data);    // Added
-parse_data *parse_relational_exp(parse_data *data);   // Added
+parse_data *parse_bool_exp(parse_data *data);
+parse_data *parse_bool_exp_prime(parse_data *data);
+parse_data *parse_and_exp(parse_data *data);
+parse_data *parse_and_exp_prime(parse_data *data);
+parse_data *parse_relational_exp(parse_data *data);
 static parse_data *parse_type(parse_data *data);
 
 
@@ -56,6 +57,16 @@ static int in_first_set(const token_type expected_token,
   if (!data) return 0;
   return !does_not_match(expected_token, data->current_token);
 }
+
+// Helper to check if token type can start an arithmetic expression
+static int is_first_of_arith_exp(const parse_data *data) {
+    if (!data) return 0;
+    return in_first_set(TOKEN_ID, data) ||
+           in_first_set(TOKEN_INTCON, data) ||
+           in_first_set(TOKEN_LPAREN, data) ||
+           in_first_set(TOKEN_OPSUB, data); // For unary minus in factor
+}
+
 
 int bad_exit(const parse_data *data) {
     if (!data) return 1;
@@ -226,8 +237,8 @@ parse_data *parse_stmt_list(parse_data *data) {
           in_first_set(TOKEN_SEMI, data) ||
           in_first_set(TOKEN_KWIF, data) ||
           in_first_set(TOKEN_KWWHILE, data) ||
-          in_first_set(TOKEN_LBRACE, data)
-          /* || in_first_set(TOKEN_KWRETURN, data) */ )) {
+          in_first_set(TOKEN_KWRETURN, data) || // Added RETURN
+          in_first_set(TOKEN_LBRACE, data) )) {
     data = parse_stmt(data);
   }
   return data;
@@ -244,7 +255,9 @@ parse_data *parse_stmt(parse_data *data) {
     else if (in_first_set(TOKEN_KWWHILE, data)) {
         data = parse_while_stmt(data);
     }
-    // else if (in_first_set(TOKEN_KWRETURN, data)) { /* TODO */ }
+    else if (in_first_set(TOKEN_KWRETURN, data)) { // Added RETURN
+        data = parse_return_stmt(data);
+    }
     else if (in_first_set(TOKEN_LBRACE, data)) {
         update_data_to_next_token(data);
         data = parse_opt_var_decls(data);
@@ -268,7 +281,7 @@ parse_data *parse_stmt(parse_data *data) {
 parse_data *parse_stmt_after_id(parse_data *data) {
     if (in_first_set(TOKEN_OPASSG, data)) {
          update_data_to_next_token(data);
-        data = parse_arith_exp(data); // Use full arith exp parser now
+        data = parse_arith_exp(data);
         if (bad_exit(data)) { return data; }
         if (does_not_match(TOKEN_SEMI, data->current_token)) {
             data->exit_status = 1; return data;
@@ -298,7 +311,7 @@ parse_data *parse_if_stmt(parse_data *data) {
          data->exit_status = 1; return data;
      }
      update_data_to_next_token(data);
-    data = parse_bool_exp(data); // Use bool_exp for condition
+    data = parse_bool_exp(data);
     if (bad_exit(data)) { return data; }
     if (does_not_match(TOKEN_RPAREN, data->current_token)) {
          data->exit_status = 1; return data;
@@ -325,13 +338,36 @@ parse_data *parse_while_stmt(parse_data *data) {
         data->exit_status = 1; return data;
     }
     update_data_to_next_token(data);
-    data = parse_bool_exp(data); // Use bool_exp for condition
+    data = parse_bool_exp(data);
     if (bad_exit(data)) { return data; }
     if (does_not_match(TOKEN_RPAREN, data->current_token)) {
         data->exit_status = 1; return data;
     }
     update_data_to_next_token(data);
     data = parse_stmt(data);
+    return data;
+}
+
+parse_data *parse_return_stmt(parse_data *data) {
+    update_data_to_next_token(data); // Consume KWRETURN
+
+    if (in_first_set(TOKEN_SEMI, data)) {
+        // Case: return;
+        update_data_to_next_token(data); // Consume SEMI
+    } else if (is_first_of_arith_exp(data)) {
+        // Case: return <expression>;
+        data = parse_arith_exp(data); // Parse the expression
+        if (bad_exit(data)) { return data; } // Propagate expression parsing error
+
+        // Expect SEMI after expression
+        if (does_not_match(TOKEN_SEMI, data->current_token)) {
+            data->exit_status = 1; return data; // Error: Missing SEMI
+        }
+        update_data_to_next_token(data); // Consume SEMI
+    } else {
+        // Error: Expected ';' or expression after 'return'
+        data->exit_status = 1;
+    }
     return data;
 }
 
@@ -348,7 +384,7 @@ parse_data *parse_primary_exp(parse_data *data) {
          update_data_to_next_token(data);
      } else if (in_first_set(TOKEN_LPAREN, data)) {
          update_data_to_next_token(data);
-         data = parse_arith_exp(data);
+         data = parse_bool_exp(data); // Parse inner expression (can be bool or arith)
          if (bad_exit(data)) { return data; }
          if (does_not_match(TOKEN_RPAREN, data->current_token)) {
              data->exit_status = 1; return data;
@@ -365,8 +401,10 @@ parse_data *parse_factor(parse_data *data) {
     if (in_first_set(TOKEN_OPSUB, data)) {
         update_data_to_next_token(data);
         data = parse_factor(data);
+        if (bad_exit(data)) { return data; } // Check after recursive call
     } else {
         data = parse_primary_exp(data);
+        if (bad_exit(data)) { return data; } // Check after call
     }
     return data;
 }
@@ -375,6 +413,7 @@ parse_data *parse_term_prime(parse_data *data) {
      while (!bad_exit(data) && (in_first_set(TOKEN_OPMUL, data) || in_first_set(TOKEN_OPDIV, data))) {
          update_data_to_next_token(data);
          data = parse_factor(data);
+         if (bad_exit(data)) { return data; }
      }
      return data;
  }
@@ -390,6 +429,7 @@ parse_data *parse_term_prime(parse_data *data) {
      while (!bad_exit(data) && (in_first_set(TOKEN_OPADD, data) || in_first_set(TOKEN_OPSUB, data))) {
          update_data_to_next_token(data);
          data = parse_term(data);
+         if (bad_exit(data)) { return data; }
      }
      return data;
  }
@@ -401,61 +441,56 @@ parse_data *parse_term_prime(parse_data *data) {
      return data;
  }
 
- // --- Boolean Expression Parsing ---
 
  parse_data *parse_relational_exp(parse_data *data) {
-     data = parse_arith_exp(data); // Parse the first arithmetic expression
+     data = parse_arith_exp(data);
      if (bad_exit(data)) { return data; }
 
-     // Check for optional relational or assignment operator + second arith_exp
      int is_relop_or_assign =
         in_first_set(TOKEN_OPLE, data) ||
         in_first_set(TOKEN_OPEQ, data) ||
         in_first_set(TOKEN_OPNE, data) ||
         in_first_set(TOKEN_OPLT, data) ||
         in_first_set(TOKEN_OPGE, data) ||
-        in_first_set(TOKEN_OPGT, data) ||
-        in_first_set(TOKEN_OPASSG, data); // Keep OPASSG for if(x=z) test case
+        in_first_set(TOKEN_OPGT, data);
 
-      if (is_relop_or_assign) {
-          update_data_to_next_token(data); // Consume the operator
-          data = parse_arith_exp(data); // Parse the second arithmetic expression
+      if (!bad_exit(data) && is_relop_or_assign) {
+          update_data_to_next_token(data);
+          data = parse_arith_exp(data);
           if (bad_exit(data)) { return data; }
-          // In a real AST builder, you'd combine the two arith_exp and the operator here
       }
-      // else: If no operator follows, it's just a single arith_exp (e.g., if(x))
-      // which is treated as potentially boolean contextually later.
-
      return data;
  }
 
  parse_data *parse_and_exp_prime(parse_data *data) {
      while (!bad_exit(data) && in_first_set(TOKEN_OPAND, data)) {
-         update_data_to_next_token(data); // Consume &&
-         data = parse_relational_exp(data); // Parse the following relational_exp
+         update_data_to_next_token(data);
+         data = parse_relational_exp(data);
+         if (bad_exit(data)) { return data; }
      }
-     return data; // Epsilon case
+     return data;
  }
 
  parse_data *parse_and_exp(parse_data *data) {
-     data = parse_relational_exp(data); // Parse the first relational_exp
+     data = parse_relational_exp(data);
      if (bad_exit(data)) { return data; }
-     data = parse_and_exp_prime(data); // Parse the rest (... && relational_exp)*
+     data = parse_and_exp_prime(data);
      return data;
  }
 
  parse_data *parse_bool_exp_prime(parse_data *data) {
      while (!bad_exit(data) && in_first_set(TOKEN_OPOR, data)) {
-         update_data_to_next_token(data); // Consume ||
-         data = parse_and_exp(data); // Parse the following and_exp
+         update_data_to_next_token(data);
+         data = parse_and_exp(data);
+         if (bad_exit(data)) { return data; }
      }
-     return data; // Epsilon case
+     return data;
  }
 
  parse_data *parse_bool_exp(parse_data *data) {
-     data = parse_and_exp(data); // Parse the first and_exp
+     data = parse_and_exp(data);
      if (bad_exit(data)) { return data; }
-     data = parse_bool_exp_prime(data); // Parse the rest (... || and_exp)*
+     data = parse_bool_exp_prime(data);
      return data;
  }
 
@@ -463,12 +498,14 @@ parse_data *parse_term_prime(parse_data *data) {
 int parse_prog() {
   parse_data *data = create_parse_data();
   data = parse_decl_list(data);
-  const int exit_status = data->exit_status;
+  const int original_exit_status = data->exit_status; // Store status after parsing
   if (!bad_exit(data) && !in_first_set(TOKEN_EOF, data)) {
+     // If parsing finished successfully but not at EOF, signal error
      data->exit_status = 1;
   }
+  const int final_exit_status = data->exit_status; // Get potentially updated status
   free(data);
-  return (exit_status != 0) ? exit_status : data->exit_status;
+  return final_exit_status; // Return the final status
 }
 
 int parse(void) {

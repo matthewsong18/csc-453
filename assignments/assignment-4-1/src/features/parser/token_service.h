@@ -30,6 +30,8 @@ typedef enum {
   TOKEN_OPSUB,
   TOKEN_OPMUL,
   TOKEN_OPDIV,
+  TOKEN_OPAND,
+  TOKEN_OPOR,
 } token_type;
 
 typedef struct {

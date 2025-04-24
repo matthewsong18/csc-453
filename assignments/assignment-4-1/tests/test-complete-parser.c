@@ -78,7 +78,7 @@ static void test_function_definition(void **state) {
 
   const char *missing_type = "f() { }";
   parser_exit_result = test_parser(missing_type);
-  assert_int_equal(0, parser_exit_result);
+  assert_int_equal(1, parser_exit_result);
 
   const char *missing_id = "int () { }";
   parser_exit_result = test_parser(missing_id);
@@ -202,7 +202,7 @@ static void test_if_statement(void **state) {
 
   const char *invalid_operator = "int f() { if (x = z) { } }";
   parser_exit_result = test_parser(invalid_operator);
-  assert_int_equal(0, parser_exit_result);
+  assert_int_equal(1, parser_exit_result);
 
   const char *nested_if_statements = "int f() { if (x == z) { if (z != y) { } } }";
   parser_exit_result = test_parser(nested_if_statements);
@@ -403,6 +403,45 @@ static void test_boolean_logic(void **state) {
   assert_int_equal(1, parser_exit_result); // Expect failure
 }
 
+static void test_return_statement(void **state) {
+  (void) state;
+
+  // --- Valid Return Statements ---
+  const char *ret_no_val = "int f() { return; }";
+  int parser_exit_result = test_parser(ret_no_val);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *ret_intcon = "int f() { return 10; }";
+  parser_exit_result = test_parser(ret_intcon);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *ret_id = "int f() { int x; x=1; return x; }"; // Need local var support
+  parser_exit_result = test_parser(ret_id);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *ret_expr = "int f() { return a + b * 3; }"; // Needs full arith exp support
+  parser_exit_result = test_parser(ret_expr);
+  assert_int_equal(0, parser_exit_result); // Expect success
+
+  const char *err3 = "int f() { return(a+b); }"; // Parentheses not part of return stmt syntax
+  parser_exit_result = test_parser(err3);
+  assert_int_equal(0, parser_exit_result); // Expect failure (unless expr parser handles it)
+
+  // --- Error Cases ---
+  const char *err1 = "int f() { return }"; // Missing semicolon
+  parser_exit_result = test_parser(err1);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+
+  const char *err2 = "int f() { return + ; }"; // Invalid expression after return
+  parser_exit_result = test_parser(err2);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+
+
+  const char *err4 = "int f() { return return; }"; // Keyword instead of expression/semicolon
+  parser_exit_result = test_parser(err4);
+  assert_int_equal(1, parser_exit_result); // Expect failure
+}
+
 bool DEBUG_ON = false;
 
 int main(void) {
@@ -419,6 +458,7 @@ int main(void) {
     cmocka_unit_test(test_local_variable),
     cmocka_unit_test(test_arithmetic_expressions),
     cmocka_unit_test(test_boolean_logic),
+    cmocka_unit_test(test_return_statement),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);
