@@ -15,3 +15,13 @@ Symbol *allocate_symbol(void) {
 
   return symbol;
 }
+
+SymbolTable *allocate_symbol_table(void) {
+  SymbolTable *symbol_table = malloc(sizeof(SymbolTable));
+  if (symbol_table == NULL) {
+    fprintf(stderr, "Memory allocation error\n");
+    exit(EXIT_FAILURE);
+  }
+
+  return symbol_table;
+}
