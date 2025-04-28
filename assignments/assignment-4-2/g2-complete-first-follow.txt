@@ -1,0 +1,73 @@
+FIRST sets:
+  actuals_list:   opSUB ID INTCON LPAREN
+  actuals_list_tail:   COMMA <epsilon>
+  and_exp:   opSUB ID INTCON LPAREN
+  and_exp_prime:   opAND <epsilon>
+  arith_exp:   opSUB ID INTCON LPAREN
+  arith_exp_prime:   opADD opSUB <epsilon>
+  assg_stmt:   opASSG
+  bool_exp:   opSUB ID INTCON LPAREN
+  bool_exp_prime:   opOR <epsilon>
+  decl:   kwINT
+  decl_list:   <epsilon> kwINT
+  decl_prime:   COMMA SEMI LPAREN
+  else_part:   kwELSE <epsilon>
+  factor:   opSUB ID INTCON LPAREN
+  fn_call:   ID
+  formals_list:   kwINT
+  formals_list_tail:   COMMA <epsilon>
+  func_defn:   LPAREN
+  if_stmt:   kwIF
+  local_decl:   kwINT
+  opt_actuals:   <epsilon> opSUB ID INTCON LPAREN
+  opt_formals:   <epsilon> kwINT
+  opt_var_decls:   <epsilon> kwINT
+  primary_exp:   ID INTCON LPAREN
+  prog:   <epsilon> kwINT
+  relational_exp:   opSUB ID INTCON LPAREN
+  relop:   opEQ opNE opLE opLT opGE opGT
+  return_stmt:   kwRETURN
+  stmt:   kwIF kwRETURN LBRACE ID SEMI kwWHILE
+  stmt_list:   kwIF kwRETURN LBRACE ID SEMI <epsilon> kwWHILE
+  term:   opSUB ID INTCON LPAREN
+  term_prime:   opMUL opDIV <epsilon>
+  type:   kwINT
+  var_decl_list_tail:   COMMA <epsilon>
+  while_stmt:   kwWHILE
+
+FOLLOW sets:
+  actuals_list:   RPAREN
+  actuals_list_tail:   RPAREN
+  and_exp:   opOR RPAREN
+  and_exp_prime:   opOR RPAREN
+  arith_exp:   COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  arith_exp_prime:   COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  assg_stmt:   SEMI
+  bool_exp:   RPAREN
+  bool_exp_prime:   RPAREN
+  decl:   kwINT <EOF>
+  decl_list:   <EOF>
+  decl_prime:   kwINT <EOF>
+  else_part:   kwELSE kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE
+  factor:   opMUL opDIV opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  fn_call:   SEMI opMUL opDIV opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND opOR
+  formals_list:   RPAREN
+  formals_list_tail:   RPAREN
+  func_defn:   kwINT <EOF>
+  if_stmt:   kwELSE kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE
+  local_decl:   kwINT kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE
+  opt_actuals:   RPAREN
+  opt_formals:   RPAREN
+  opt_var_decls:   kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE
+  primary_exp:   opMUL opDIV opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  prog:   <EOF>
+  relational_exp:   opAND opOR RPAREN
+  relop:   opSUB ID INTCON LPAREN
+  return_stmt:   kwELSE kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE
+  stmt:   kwELSE kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE
+  stmt_list:   RBRACE
+  term:   opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  term_prime:   opADD opSUB COMMA RPAREN opEQ opNE opLE opLT opGE opGT opAND SEMI opOR
+  type:   ID
+  var_decl_list_tail:   SEMI
+  while_stmt:   kwELSE kwIF kwRETURN LBRACE ID SEMI kwWHILE RBRACE

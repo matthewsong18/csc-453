@@ -1,0 +1,132 @@
+%token ID kwINT LPAREN RPAREN LBRACE RBRACE SEMI COMMA INTCON kwELSE kwIF kwRETURN kwWHILE opASSG opADD opSUB opMUL opDIV opAND opOR opEQ opGE opGT opLE opLT opNE
+%start prog
+%%
+
+prog : decl_list
+     ;
+
+decl_list : decl decl_list
+          | /* epsilon */
+          ;
+
+decl : type ID decl_prime
+     ;
+
+decl_prime : var_decl_list_tail SEMI
+           | func_defn
+           ;
+
+var_decl_list_tail : COMMA ID var_decl_list_tail
+                   | /* epsilon */
+                   ;
+
+type : kwINT
+     ;
+
+func_defn : LPAREN opt_formals RPAREN LBRACE opt_var_decls stmt_list RBRACE
+          ;
+
+opt_formals : /* epsilon */
+            | formals_list
+            ;
+
+formals_list : type ID formals_list_tail
+             ;
+
+formals_list_tail : COMMA type ID formals_list_tail
+                  | /* epsilon */
+                  ;
+
+opt_var_decls : local_decl opt_var_decls
+              | /* epsilon */
+              ;
+
+local_decl : type ID var_decl_list_tail SEMI
+           ;
+
+stmt_list : stmt stmt_list
+          | /* epsilon */
+          ;
+
+stmt : ID assg_or_fn_stmt
+	 | if_stmt
+     | while_stmt
+     | return_stmt
+     | LBRACE stmt_list RBRACE
+     | SEMI
+     ;
+
+if_stmt : kwIF LPAREN bool_exp RPAREN stmt else_part
+        ;
+
+else_part : kwELSE stmt
+          | /* epsilon */
+          ;
+
+while_stmt : kwWHILE LPAREN bool_exp RPAREN stmt
+           ;
+
+return_stmt : kwRETURN SEMI
+            | kwRETURN arith_exp SEMI
+            ;
+
+assg_or_fn_stmt : opASSG arith_exp SEMI      
+                | LPAREN opt_actuals RPAREN SEMI 
+                ;
+
+fn_call : ID LPAREN opt_actuals RPAREN 
+        ;
+
+opt_actuals : /* epsilon */
+            | actuals_list
+            ;
+
+actuals_list : arith_exp actuals_list_tail
+             ;
+
+actuals_list_tail : COMMA arith_exp actuals_list_tail
+                  | /* epsilon */
+                  ;
+
+bool_exp      : and_exp bool_exp_prime
+              ;
+bool_exp_prime: opOR and_exp bool_exp_prime
+              | /* epsilon */
+              ;
+
+and_exp       : relational_exp and_exp_prime
+              ;
+and_exp_prime : opAND relational_exp and_exp_prime
+              | /* epsilon */
+              ;
+
+relational_exp : arith_exp relop arith_exp
+               | arith_exp
+               ;
+
+relop : opEQ | opNE | opLE | opLT | opGE | opGT
+      ;
+
+arith_exp       : term arith_exp_prime
+                ;
+arith_exp_prime : opADD term arith_exp_prime
+                | opSUB term arith_exp_prime
+                | /* epsilon */
+                ;
+
+term       : factor term_prime
+           ;
+term_prime : opMUL factor term_prime
+           | opDIV factor term_prime
+           | /* epsilon */
+           ;
+
+factor : opSUB factor
+       | primary_exp
+       ;
+
+primary_exp : ID
+            | INTCON
+            | LPAREN arith_exp RPAREN
+            | fn_call
+            ;

@@ -1,0 +1,67 @@
+func_def: f0
+  formals: 
+  body:
+    {
+        if (x > y):
+        then:
+        else:
+        end_if
+    }
+/* func_def: f0 */
+
+func_def: f1
+  formals: 
+  body:
+    {
+        if (x >= y):
+        then:
+        else:
+        end_if
+    }
+/* func_def: f1 */
+
+func_def: f2
+  formals: 
+  body:
+    {
+        if (x < y):
+        then:
+        else:
+        end_if
+    }
+/* func_def: f2 */
+
+func_def: f3
+  formals: 
+  body:
+    {
+        if (x <= y):
+        then:
+        else:
+        end_if
+    }
+/* func_def: f3 */
+
+func_def: f4
+  formals: 
+  body:
+    {
+        if (x == y):
+        then:
+        else:
+        end_if
+    }
+/* func_def: f4 */
+
+func_def: f5
+  formals: 
+  body:
+    {
+        if (x != y):
+        then:
+        else:
+        end_if
+    }
+/* func_def: f5 */
+
+exit status: 0

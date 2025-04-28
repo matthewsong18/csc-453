@@ -1,0 +1,21 @@
+func_def: f
+  formals: x
+  body:
+    {
+        while (x > 0):
+            f(0)
+        end_while
+    }
+/* func_def: f */
+
+func_def: g
+  formals: x, y
+  body:
+    {
+        while (x > 0):
+            g(x, y)
+        end_while
+    }
+/* func_def: g */
+
+exit status: 0

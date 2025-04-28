@@ -1,0 +1,37 @@
+func_def: f
+  formals: x
+  body:
+    {
+        return: 
+        f(0)
+    }
+/* func_def: f */
+
+func_def: g
+  formals: x
+  body:
+    {
+        f(0)
+        return: 
+    }
+/* func_def: g */
+
+func_def: h
+  formals: x
+  body:
+    {
+        f(0)
+        return: x
+    }
+/* func_def: h */
+
+func_def: i
+  formals: x
+  body:
+    {
+        return: 0
+        f(x)
+    }
+/* func_def: i */
+
+exit status: 0
