@@ -55,7 +55,7 @@ add_executable(test_complete
 
 add_executable(test_semantic
         tests/test-semantic.c
-        src/features/semantic/semantic-checker.c
+        src/features/semantic/symbols.c
 )
 
 find_package(cmocka REQUIRED)
