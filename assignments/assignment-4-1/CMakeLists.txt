@@ -56,6 +56,8 @@ add_executable(test_complete
 add_executable(test_semantic
         tests/test-semantic.c
         src/features/semantic/symbols.c
+        src/features/common/safe-memory.c
+        src/features/common/safe-memory.h
 )
 
 find_package(cmocka REQUIRED)

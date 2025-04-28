@@ -1,14 +1,8 @@
 #include "symbols.h"
-
-#include <stdio.h>
-#include <stdlib.h>
+#include "../common/safe-memory.h"
 
 Symbol *allocate_symbol(void) {
-  Symbol *symbol = malloc(sizeof(Symbol));
-  if (symbol == NULL) {
-    fprintf(stderr, "Memory allocation error\n");
-    exit(EXIT_FAILURE);
-  }
+  Symbol *symbol = safe_malloc(sizeof(Symbol));
 
   // symbol->name = NULL;
   // symbol->type = SYM_NULL;
@@ -17,11 +11,7 @@ Symbol *allocate_symbol(void) {
 }
 
 SymbolTable *allocate_symbol_table(void) {
-  SymbolTable *symbol_table = malloc(sizeof(SymbolTable));
-  if (symbol_table == NULL) {
-    fprintf(stderr, "Memory allocation error\n");
-    exit(EXIT_FAILURE);
-  }
+  SymbolTable *symbol_table = safe_malloc(sizeof(SymbolTable));
 
   return symbol_table;
 }
