@@ -23,7 +23,7 @@ static void test_allocate_symbol_table(void **state) {
   SymbolTable *symbol_table = allocate_symbol_table();
 
   assert_non_null(symbol_table);
-  assert_null(symbol_table->symbols);
+  assert_non_null(symbol_table->symbols);
   assert_null(symbol_table->global_scope->head);
   assert_null(symbol_table->current_scope->head);
 }
@@ -40,12 +40,18 @@ static void test_add_global_symbol(void **state) {
   assert_string_equal(name, symbol_table->global_scope->tail->name);
   assert_string_equal(name, symbol_table->current_scope->head->name);
   assert_string_equal(name, symbol_table->current_scope->tail->name);
-  assert_string_equal(name, symbol_table->symbols->name);
+  assert_string_equal(name, symbol_table->symbols->next->name);
   assert_int_equal(type, symbol_table->global_scope->head->type);
   assert_int_equal(type, symbol_table->global_scope->tail->type);
   assert_int_equal(type, symbol_table->current_scope->head->type);
   assert_int_equal(type, symbol_table->current_scope->tail->type);
-  assert_int_equal(type, symbol_table->symbols->type);
+  assert_int_equal(type, symbol_table->symbols->next->type);
+
+  char *name_two = "symbol_two";
+  symbol_table = add_symbol(name_two, type, symbol_table);
+
+  assert_string_equal(name_two, symbol_table->symbols->next->name);
+  assert_string_equal(name_two, symbol_table->global_scope->head->next->name);
 }
 
 int main(void) {
