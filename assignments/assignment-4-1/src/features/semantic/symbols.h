@@ -3,6 +3,7 @@
 
 enum SymbolType {
   SYM_NULL,
+  SYM_VARIABLE,
 };
 
 typedef struct {
@@ -25,5 +26,6 @@ typedef struct {
 
 Symbol *allocate_symbol(void);
 SymbolTable *allocate_symbol_table(void);
+SymbolTable *add_symbol(char *name, enum SymbolType type, SymbolTable *symbol_table);
 
 #endif //SYMBOLS_H
