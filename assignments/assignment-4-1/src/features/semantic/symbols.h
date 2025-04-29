@@ -6,7 +6,7 @@ enum SymbolType {
   SYM_VARIABLE,
 };
 
-typedef struct {
+typedef struct Symbol {
   char *name;
   enum SymbolType type;
   struct Symbol *next;
