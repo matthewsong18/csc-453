@@ -26,6 +26,10 @@ typedef struct {
 
 Symbol *allocate_symbol(void);
 SymbolTable *allocate_symbol_table(void);
-SymbolTable *add_symbol(char *name, enum SymbolType type, SymbolTable *symbol_table);
+SymbolTable *add_symbol(char *name, enum SymbolType type,
+                        SymbolTable *symbol_table);
+void push_local_scope(SymbolTable *symbol_table);
+Scope *get_global_scope(SymbolTable *symbol_table);
+Scope *get_current_scope(SymbolTable *symbol_table);
 
-#endif //SYMBOLS_H
+#endif // SYMBOLS_H

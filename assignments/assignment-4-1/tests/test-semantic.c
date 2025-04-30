@@ -3,13 +3,15 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
+
+// Relies upon above
 #include <cmocka.h>
 
 // Headers
 #include "../src/features/semantic/symbols.h"
 
 static void test_allocate_symbol(void **state) {
-  (void) state;
+  (void)state;
 
   Symbol *symbol = allocate_symbol();
   assert_non_null(symbol);
@@ -18,7 +20,7 @@ static void test_allocate_symbol(void **state) {
 }
 
 static void test_allocate_symbol_table(void **state) {
-  (void) state;
+  (void)state;
 
   SymbolTable *symbol_table = allocate_symbol_table();
 
@@ -29,7 +31,7 @@ static void test_allocate_symbol_table(void **state) {
 }
 
 static void test_add_global_symbol(void **state) {
-  (void) state;
+  (void)state;
 
   SymbolTable *symbol_table = allocate_symbol_table();
   char *name = "main";
@@ -54,11 +56,27 @@ static void test_add_global_symbol(void **state) {
   assert_string_equal(name_two, symbol_table->global_scope->head->next->name);
 }
 
+static void test_add_local_symbol(void **state) {
+  (void)state;
+
+  SymbolTable *symbol_table = allocate_symbol_table();
+  char *local_name = "local";
+  const enum SymbolType type = SYM_VARIABLE;
+  push_local_scope(symbol_table);
+  symbol_table = add_symbol(local_name, type, symbol_table);
+  Symbol *local_symbol = symbol_table->current_scope->head;
+
+  assert_null(get_global_scope(symbol_table)->head);
+  assert_non_null(get_current_scope(symbol_table)->head);
+  assert_string_equal(local_name, local_symbol->name);
+}
+
 int main(void) {
   const struct CMUnitTest tests[] = {
-    cmocka_unit_test(test_allocate_symbol),
-    cmocka_unit_test(test_allocate_symbol_table),
-    cmocka_unit_test(test_add_global_symbol),
+      cmocka_unit_test(test_allocate_symbol),
+      cmocka_unit_test(test_allocate_symbol_table),
+      cmocka_unit_test(test_add_global_symbol),
+      cmocka_unit_test(test_add_local_symbol),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);

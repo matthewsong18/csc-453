@@ -53,3 +53,17 @@ SymbolTable *add_symbol(char *name, enum SymbolType type,
 
   return symbol_table;
 }
+
+void push_local_scope(SymbolTable *symbol_table) {
+  // TODO
+}
+
+Scope *get_global_scope(SymbolTable *symbol_table) {
+  // TODO
+  return NULL;
+}
+
+Scope *get_current_scope(SymbolTable *symbol_table) {
+  // TODO
+  return NULL;
+}
