@@ -68,3 +68,7 @@ Scope *get_global_scope(const SymbolTable *symbol_table) {
 Scope *get_current_scope(const SymbolTable *symbol_table) {
   return symbol_table->current_scope;
 }
+
+void free_symbol_table(SymbolTable *symbol_table) {
+  // TODO
+}
