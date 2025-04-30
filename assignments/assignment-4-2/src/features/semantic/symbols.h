@@ -10,6 +10,8 @@ enum SymbolType {
 typedef struct Symbol {
   char *name;
   enum SymbolType type;
+  int num_of_formals;
+  struct Symbol *formals;
   struct Symbol *next;
   struct Symbol *prev;
 } Symbol;
@@ -44,6 +46,7 @@ void pop_local_scope(SymbolTable *symbol_table);
 // Getters
 Scope *get_global_scope(const SymbolTable *symbol_table);
 Scope *get_current_scope(const SymbolTable *symbol_table);
+Symbol *find_formal(const Symbol *function_symbol, const char *formal_name);
 
 // Free memory
 void free_symbol_table(SymbolTable *symbol_table);

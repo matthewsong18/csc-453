@@ -112,8 +112,8 @@ static void test_add_function_formals(void **state) {
   symbol_table = add_formal(formal_2_name, symbol_table);
 
   const Symbol *function_symbol = symbol_table->symbols->next;
-  const Symbol *formal_1 = get_formal(function_symbol, 0);
-  const Symbol *formal_2 = get_formal(function_symbol, 1);
+  const Symbol *formal_1 = find_formal(function_symbol, formal_1_name);
+  const Symbol *formal_2 = find_formal(function_symbol, formal_2_name);
 
   assert_string_equal(formal_1_name, formal_1->name);
   assert_string_equal(formal_2_name, formal_2->name);

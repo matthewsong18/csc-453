@@ -1,6 +1,7 @@
 #include "symbols.h"
 #include "../common/safe-memory.h"
 
+#include <_stdio.h>
 #include <_string.h>
 #include <stdlib.h>
 
@@ -9,7 +10,8 @@ Symbol *allocate_symbol(void) {
 
   symbol->name = NULL;
   symbol->type = SYM_NULL;
-
+  symbol->num_of_formals = 0;
+  symbol->formals = NULL;
   symbol->next = symbol;
   symbol->prev = symbol;
 
@@ -68,8 +70,31 @@ SymbolTable *add_symbol(const char *name, const enum SymbolType type,
 }
 
 SymbolTable *add_formal(const char *formal_name, SymbolTable *symbol_table) {
-  // TODO
-  return NULL;
+  Symbol *symbol = allocate_symbol();
+  symbol->name = strdup(formal_name);
+  symbol->type = SYM_VARIABLE;
+
+  Symbol *function_symbol = symbol_table->global_scope->tail;
+  if (function_symbol == NULL) {
+    // TODO
+    fprintf(stderr, "ERROR: no function symbol found\n");
+    exit(EXIT_FAILURE);
+  }
+
+  if (function_symbol->formals == NULL) {
+    function_symbol->formals = symbol;
+    function_symbol->num_of_formals = 1;
+    return symbol_table;
+  }
+
+  // Append symbol to tail
+  symbol->prev = function_symbol->formals->prev;
+  symbol->next = function_symbol->formals;
+  function_symbol->formals->prev->next = symbol;
+  function_symbol->formals->prev = symbol;
+  function_symbol->num_of_formals++;
+
+  return symbol_table;
 }
 
 void push_local_scope(SymbolTable *symbol_table) {
@@ -98,6 +123,21 @@ Scope *get_global_scope(const SymbolTable *symbol_table) {
 
 Scope *get_current_scope(const SymbolTable *symbol_table) {
   return symbol_table->current_scope;
+}
+Symbol *find_formal(const Symbol *function_symbol, const char *formal_name) {
+  if (function_symbol->num_of_formals == 0) {
+    fprintf(stderr, "ERROR: no formals found\n");
+    exit(EXIT_FAILURE);
+  }
+  Symbol *formal = function_symbol->formals;
+  for (int i = 0; i < function_symbol->num_of_formals; i++) {
+    if (strcmp(formal->name, formal_name) == 0) {
+      return formal;
+    }
+    formal = formal->next;
+  }
+  fprintf(stderr, "ERROR: formal not found\n");
+  exit(EXIT_FAILURE);
 }
 
 void free_symbol_table(SymbolTable *symbol_table) {
