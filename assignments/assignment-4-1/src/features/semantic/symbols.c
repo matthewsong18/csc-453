@@ -2,9 +2,13 @@
 #include "../common/safe-memory.h"
 
 #include <_string.h>
+#include <stdlib.h>
 
 Symbol *allocate_symbol(void) {
   Symbol *symbol = safe_malloc(sizeof(Symbol));
+
+  symbol->name = NULL;
+  symbol->type = SYM_NULL;
 
   symbol->next = symbol;
   symbol->prev = symbol;
@@ -14,14 +18,22 @@ Symbol *allocate_symbol(void) {
 
 Scope *allocate_scope(void) {
   Scope *scope = safe_malloc(sizeof(Scope));
+
+  scope->next = scope;
+  scope->prev = scope;
+
   return scope;
 }
 
 SymbolTable *allocate_symbol_table(void) {
   SymbolTable *symbol_table = safe_malloc(sizeof(SymbolTable));
   symbol_table->symbols = allocate_symbol();
-  symbol_table->global_scope = allocate_scope();
-  symbol_table->current_scope = symbol_table->global_scope;
+  Scope *scope = allocate_scope();
+  symbol_table->global_scope = scope;
+  symbol_table->current_scope = scope;
+
+  symbol_table->scopes = allocate_scope();
+  symbol_table->scopes->next = scope;
 
   return symbol_table;
 }
@@ -34,9 +46,11 @@ SymbolTable *add_symbol(const char *name, enum SymbolType type,
 
   // Add a symbol to the end of a doubly linked list
   Symbol *tail_symbol = symbol_table->symbols->prev;
-  tail_symbol->next = symbol;
+  symbol_table->symbols->prev = symbol;
+
   symbol->prev = tail_symbol;
-  symbol->next = symbol_table->symbols;
+  symbol->next = tail_symbol->next;
+  tail_symbol->next = symbol;
 
   if (symbol_table->current_scope->head == NULL) {
     symbol_table->current_scope->head = symbol;
@@ -54,7 +68,19 @@ SymbolTable *add_symbol(const char *name, enum SymbolType type,
 }
 
 void push_local_scope(SymbolTable *symbol_table) {
-  symbol_table->current_scope = allocate_scope();
+  Scope *new_scope = allocate_scope();
+
+  symbol_table->current_scope = new_scope;
+
+  Scope *last_scope = symbol_table->scopes->prev;
+
+  // Insert new_scope into the list
+  last_scope->next = new_scope;
+  new_scope->prev = last_scope;
+  new_scope->next = symbol_table->scopes;
+
+  symbol_table->scopes->prev = new_scope;
+
 }
 
 void pop_local_scope(SymbolTable *symbol_table) {
@@ -70,5 +96,32 @@ Scope *get_current_scope(const SymbolTable *symbol_table) {
 }
 
 void free_symbol_table(SymbolTable *symbol_table) {
-  // TODO
+  Symbol *placeholder_symbol = symbol_table->symbols;
+  Symbol *symbol = placeholder_symbol->next;
+  while (symbol != placeholder_symbol) {
+    Symbol *next_symbol = symbol->next;
+
+    if (symbol->name != NULL) {
+      free(symbol->name);
+    }
+    symbol->type = SYM_NULL;
+    symbol->next = NULL;
+    symbol->prev = NULL;
+
+    free(symbol);
+    symbol = next_symbol;
+  }
+
+  Scope *placeholder_scope = symbol_table->scopes;
+  Scope *scope = placeholder_scope->next;
+  while (scope != placeholder_scope) {
+    Scope *next_scope = scope->next;
+    free(scope);
+    scope = next_scope;
+  }
+
+  symbol_table->symbols = NULL;
+  symbol_table->scopes = NULL;
+  symbol_table->global_scope = NULL;
+  symbol_table->current_scope = NULL;
 }

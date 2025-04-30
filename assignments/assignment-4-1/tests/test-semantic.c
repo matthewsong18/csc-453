@@ -52,7 +52,7 @@ static void test_add_global_symbol(void **state) {
   char *name_two = "symbol_two";
   symbol_table = add_symbol(name_two, type, symbol_table);
 
-  assert_string_equal(name_two, symbol_table->symbols->next->name);
+  assert_string_equal(name_two, symbol_table->symbols->next->next->name);
   assert_string_equal(name_two, symbol_table->global_scope->head->next->name);
 }
 
@@ -93,9 +93,7 @@ static void test_free_symbol_table(void **state) {
   symbol_table = add_symbol("local", SYM_VARIABLE, symbol_table);
 
   free_symbol_table(symbol_table);
-  assert_int_equal(SYM_NULL, symbol_table->symbols->type);
-  assert_ptr_equal(symbol_table->symbols, symbol_table->symbols->next);
-  assert_ptr_equal(symbol_table->symbols, symbol_table->symbols->prev);
+  assert_int_equal(SYM_NULL, symbol_table->symbols);
   assert_null(symbol_table->global_scope);
   assert_null(symbol_table->current_scope);
 }

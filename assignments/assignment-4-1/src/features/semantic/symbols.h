@@ -13,13 +13,16 @@ typedef struct Symbol {
   struct Symbol *prev;
 } Symbol;
 
-typedef struct {
+typedef struct Scope {
   Symbol *head;
   Symbol *tail;
+  struct Scope *next;
+  struct Scope *prev;
 } Scope;
 
 typedef struct {
   Symbol *symbols;
+  Scope *scopes;
   Scope *global_scope;
   Scope *current_scope;
 } SymbolTable;
