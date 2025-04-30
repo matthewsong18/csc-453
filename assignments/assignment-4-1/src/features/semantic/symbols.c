@@ -26,44 +26,41 @@ SymbolTable *allocate_symbol_table(void) {
   return symbol_table;
 }
 
-SymbolTable *add_symbol(char *name, enum SymbolType type,
+SymbolTable *add_symbol(const char *name, enum SymbolType type,
                         SymbolTable *symbol_table) {
   Symbol *symbol = allocate_symbol();
   symbol->name = strdup(name);
   symbol->type = type;
 
-  // Add symbol to end of doubly-linked list
+  // Add a symbol to the end of a doubly linked list
   Symbol *tail_symbol = symbol_table->symbols->prev;
   tail_symbol->next = symbol;
   symbol->prev = tail_symbol;
   symbol->next = symbol_table->symbols;
 
-  if (symbol_table->global_scope->head == NULL) {
-    symbol_table->global_scope->head = symbol;
-    symbol_table->global_scope->tail = symbol;
-    symbol_table->current_scope = symbol_table->global_scope;
+  if (symbol_table->current_scope->head == NULL) {
+    symbol_table->current_scope->head = symbol;
+    symbol_table->current_scope->tail = symbol;
   } else {
     // Update symbol pointers
-    symbol->prev = symbol_table->global_scope->tail;
-    symbol->next = symbol_table->global_scope->head;
+    symbol->prev = symbol_table->current_scope->tail;
+    symbol->next = symbol_table->current_scope->head;
     // Update tail pointer
-    symbol_table->global_scope->tail->next = symbol;
-    symbol_table->global_scope->tail = symbol;
+    symbol_table->current_scope->tail->next = symbol;
+    symbol_table->current_scope->tail = symbol;
   }
 
   return symbol_table;
 }
 
 void push_local_scope(SymbolTable *symbol_table) {
-  // TODO
+  symbol_table->current_scope = allocate_scope();
 }
 
-Scope *get_global_scope(SymbolTable *symbol_table) {
-  // TODO
-  return NULL;
+Scope *get_global_scope(const SymbolTable *symbol_table) {
+  return symbol_table->global_scope;
 }
 
-Scope *get_current_scope(SymbolTable *symbol_table) {
-  // TODO
-  return NULL;
+Scope *get_current_scope(const SymbolTable *symbol_table) {
+  return symbol_table->current_scope;
 }
