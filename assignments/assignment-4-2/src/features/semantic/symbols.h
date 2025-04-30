@@ -4,6 +4,7 @@
 enum SymbolType {
   SYM_NULL,
   SYM_VARIABLE,
+  SYM_FUNCTION,
 };
 
 typedef struct Symbol {
@@ -34,6 +35,7 @@ SymbolTable *allocate_symbol_table(void);
 // Adds
 SymbolTable *add_symbol(const char *name, enum SymbolType type,
                         SymbolTable *symbol_table);
+SymbolTable *add_formal(const char *formal_name, SymbolTable *symbol_table);
 
 // Scopes
 void push_local_scope(SymbolTable *symbol_table);

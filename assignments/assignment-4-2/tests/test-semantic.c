@@ -98,6 +98,27 @@ static void test_free_symbol_table(void **state) {
   assert_null(symbol_table->current_scope);
 }
 
+static void test_add_function_formals(void **state) {
+  (void)state;
+
+  SymbolTable *symbol_table = allocate_symbol_table();
+  const char *function_name = "main";
+  const char *formal_1_name = "x";
+  const char *formal_2_name = "y";
+
+  symbol_table = add_symbol(function_name, SYM_FUNCTION, symbol_table);
+  push_local_scope(symbol_table);
+  symbol_table = add_formal(formal_1_name, symbol_table);
+  symbol_table = add_formal(formal_2_name, symbol_table);
+
+  const Symbol *function_symbol = symbol_table->symbols->next;
+  const Symbol *formal_1 = get_formal(function_symbol, 0);
+  const Symbol *formal_2 = get_formal(function_symbol, 1);
+
+  assert_string_equal(formal_1_name, formal_1->name);
+  assert_string_equal(formal_2_name, formal_2->name);
+}
+
 int main(void) {
   const struct CMUnitTest tests[] = {
       cmocka_unit_test(test_allocate_symbol),
@@ -106,6 +127,7 @@ int main(void) {
       cmocka_unit_test(test_add_local_symbol),
       cmocka_unit_test(test_pop_scope),
       cmocka_unit_test(test_free_symbol_table),
+      cmocka_unit_test(test_add_function_formals),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);

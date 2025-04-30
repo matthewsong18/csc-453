@@ -67,6 +67,11 @@ SymbolTable *add_symbol(const char *name, const enum SymbolType type,
   return symbol_table;
 }
 
+SymbolTable *add_formal(const char *formal_name, SymbolTable *symbol_table) {
+  // TODO
+  return NULL;
+}
+
 void push_local_scope(SymbolTable *symbol_table) {
   Scope *new_scope = allocate_scope();
 
