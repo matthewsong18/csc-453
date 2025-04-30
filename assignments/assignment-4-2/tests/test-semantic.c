@@ -34,7 +34,7 @@ static void test_add_global_symbol(void **state) {
   (void)state;
 
   SymbolTable *symbol_table = allocate_symbol_table();
-  char *name = "main";
+  const char *name = "main";
   const enum SymbolType type = SYM_VARIABLE;
   symbol_table = add_symbol(name, type, symbol_table);
 
@@ -49,7 +49,7 @@ static void test_add_global_symbol(void **state) {
   assert_int_equal(type, symbol_table->current_scope->tail->type);
   assert_int_equal(type, symbol_table->symbols->next->type);
 
-  char *name_two = "symbol_two";
+  const char *name_two = "symbol_two";
   symbol_table = add_symbol(name_two, type, symbol_table);
 
   assert_string_equal(name_two, symbol_table->symbols->next->next->name);
@@ -60,11 +60,11 @@ static void test_add_local_symbol(void **state) {
   (void)state;
 
   SymbolTable *symbol_table = allocate_symbol_table();
-  char *local_name = "local";
+  const char *local_name = "local";
   const enum SymbolType type = SYM_VARIABLE;
   push_local_scope(symbol_table);
   symbol_table = add_symbol(local_name, type, symbol_table);
-  Symbol *local_symbol = symbol_table->current_scope->head;
+  const Symbol *local_symbol = symbol_table->current_scope->head;
 
   assert_null(get_global_scope(symbol_table)->head);
   assert_non_null(get_current_scope(symbol_table)->head);

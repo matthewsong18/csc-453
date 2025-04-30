@@ -38,7 +38,7 @@ SymbolTable *allocate_symbol_table(void) {
   return symbol_table;
 }
 
-SymbolTable *add_symbol(const char *name, enum SymbolType type,
+SymbolTable *add_symbol(const char *name, const enum SymbolType type,
                         SymbolTable *symbol_table) {
   Symbol *symbol = allocate_symbol();
   symbol->name = strdup(name);
@@ -96,7 +96,7 @@ Scope *get_current_scope(const SymbolTable *symbol_table) {
 }
 
 void free_symbol_table(SymbolTable *symbol_table) {
-  Symbol *placeholder_symbol = symbol_table->symbols;
+  const Symbol *placeholder_symbol = symbol_table->symbols;
   Symbol *symbol = placeholder_symbol->next;
   while (symbol != placeholder_symbol) {
     Symbol *next_symbol = symbol->next;
@@ -112,7 +112,7 @@ void free_symbol_table(SymbolTable *symbol_table) {
     symbol = next_symbol;
   }
 
-  Scope *placeholder_scope = symbol_table->scopes;
+  const Scope *placeholder_scope = symbol_table->scopes;
   Scope *scope = placeholder_scope->next;
   while (scope != placeholder_scope) {
     Scope *next_scope = scope->next;
