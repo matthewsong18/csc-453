@@ -57,6 +57,10 @@ void push_local_scope(SymbolTable *symbol_table) {
   symbol_table->current_scope = allocate_scope();
 }
 
+void pop_local_scope(SymbolTable *symbol_table) {
+  // TODO
+}
+
 Scope *get_global_scope(const SymbolTable *symbol_table) {
   return symbol_table->global_scope;
 }

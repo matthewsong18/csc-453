@@ -29,6 +29,7 @@ SymbolTable *allocate_symbol_table(void);
 SymbolTable *add_symbol(const char *name, enum SymbolType type,
                         SymbolTable *symbol_table);
 void push_local_scope(SymbolTable *symbol_table);
+void pop_local_scope(SymbolTable *symbol_table);
 Scope *get_global_scope(const SymbolTable *symbol_table);
 Scope *get_current_scope(const SymbolTable *symbol_table);
 

@@ -71,12 +71,27 @@ static void test_add_local_symbol(void **state) {
   assert_string_equal(local_name, local_symbol->name);
 }
 
+static void test_pop_scope(void **state) {
+  (void)state;
+
+  SymbolTable *symbol_table = allocate_symbol_table();
+  symbol_table = add_symbol("global", SYM_VARIABLE, symbol_table);
+  push_local_scope(symbol_table);
+  symbol_table = add_symbol("local", SYM_VARIABLE, symbol_table);
+
+  assert_string_equal("local", symbol_table->current_scope->head->name);
+  pop_local_scope(symbol_table);
+  assert_string_equal("global", symbol_table->current_scope->head->name);
+
+}
+
 int main(void) {
   const struct CMUnitTest tests[] = {
       cmocka_unit_test(test_allocate_symbol),
       cmocka_unit_test(test_allocate_symbol_table),
       cmocka_unit_test(test_add_global_symbol),
       cmocka_unit_test(test_add_local_symbol),
+      cmocka_unit_test(test_pop_scope),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);
