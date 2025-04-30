@@ -82,7 +82,6 @@ static void test_pop_scope(void **state) {
   assert_string_equal("local", symbol_table->current_scope->head->name);
   pop_local_scope(symbol_table);
   assert_string_equal("global", symbol_table->current_scope->head->name);
-
 }
 
 int main(void) {

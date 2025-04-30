@@ -58,7 +58,7 @@ void push_local_scope(SymbolTable *symbol_table) {
 }
 
 void pop_local_scope(SymbolTable *symbol_table) {
-  // TODO
+  symbol_table->current_scope = symbol_table->global_scope;
 }
 
 Scope *get_global_scope(const SymbolTable *symbol_table) {
