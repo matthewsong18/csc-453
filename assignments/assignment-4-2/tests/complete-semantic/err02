@@ -1,0 +1,6 @@
+/* undeclared variable in RHS of assignment */
+
+int main() {
+    int x;
+    x = y + z;
+}

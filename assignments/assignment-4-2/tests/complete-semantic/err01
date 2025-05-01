@@ -1,0 +1,6 @@
+/* undeclared variable in LHS of assignment */
+
+int main() {
+    int x;
+    y = x + 1;
+}
