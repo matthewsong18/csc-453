@@ -42,17 +42,17 @@ static void test_add_global_symbol(void **state) {
   assert_string_equal(name, symbol_table->global_scope->tail->name);
   assert_string_equal(name, symbol_table->current_scope->head->name);
   assert_string_equal(name, symbol_table->current_scope->tail->name);
-  assert_string_equal(name, symbol_table->symbols->next->name);
+  assert_string_equal(name, symbol_table->symbols->free_next->name);
   assert_int_equal(type, symbol_table->global_scope->head->type);
   assert_int_equal(type, symbol_table->global_scope->tail->type);
   assert_int_equal(type, symbol_table->current_scope->head->type);
   assert_int_equal(type, symbol_table->current_scope->tail->type);
-  assert_int_equal(type, symbol_table->symbols->next->type);
+  assert_int_equal(type, symbol_table->symbols->free_next->type);
 
   const char *name_two = "symbol_two";
   symbol_table = add_symbol(name_two, type, symbol_table);
 
-  assert_string_equal(name_two, symbol_table->symbols->next->next->name);
+  assert_string_equal(name_two, symbol_table->symbols->free_next->free_next->name);
   assert_string_equal(name_two, symbol_table->global_scope->head->next->name);
 }
 
@@ -111,12 +111,25 @@ static void test_add_function_formals(void **state) {
   symbol_table = add_formal(formal_1_name, symbol_table);
   symbol_table = add_formal(formal_2_name, symbol_table);
 
-  const Symbol *function_symbol = symbol_table->symbols->next;
+  const Symbol *function_symbol = symbol_table->symbols->free_next;
   const Symbol *formal_1 = find_formal(function_symbol, formal_1_name);
   const Symbol *formal_2 = find_formal(function_symbol, formal_2_name);
 
   assert_string_equal(formal_1_name, formal_1->name);
   assert_string_equal(formal_2_name, formal_2->name);
+}
+
+static void test_duplicates(void **state) {
+  (void)state;
+
+  SymbolTable *symbol_table = allocate_symbol_table();
+  const char *function_name = "main";
+  symbol_table = add_symbol(function_name, SYM_FUNCTION, symbol_table);
+  const char *variable_name = "main1";
+  symbol_table = add_symbol(variable_name, SYM_VARIABLE, symbol_table);
+  const char *local_variable_name = "main2";
+  push_local_scope(symbol_table);
+  symbol_table = add_symbol(local_variable_name, SYM_VARIABLE, symbol_table);
 }
 
 int main(void) {
@@ -128,6 +141,7 @@ int main(void) {
       cmocka_unit_test(test_pop_scope),
       cmocka_unit_test(test_free_symbol_table),
       cmocka_unit_test(test_add_function_formals),
+      cmocka_unit_test(test_duplicates),
   };
 
   return cmocka_run_group_tests(tests, NULL, NULL);

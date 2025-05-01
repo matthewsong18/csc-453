@@ -14,6 +14,8 @@ Symbol *allocate_symbol(void) {
   symbol->formals = NULL;
   symbol->next = symbol;
   symbol->prev = symbol;
+  symbol->free_prev = symbol;
+  symbol->free_next = symbol;
 
   return symbol;
 }
@@ -42,17 +44,23 @@ SymbolTable *allocate_symbol_table(void) {
 
 SymbolTable *add_symbol(const char *name, const enum SymbolType type,
                         SymbolTable *symbol_table) {
+  if (is_symbol_in_scope(get_current_scope(symbol_table), name, symbol_table)) {
+    fprintf(stderr, "ERROR: symbol %s already defined in current scope\n",
+            name);
+    exit(EXIT_FAILURE);
+  }
+
   Symbol *symbol = allocate_symbol();
   symbol->name = strdup(name);
   symbol->type = type;
 
   // Add a symbol to the end of a doubly linked list
-  Symbol *tail_symbol = symbol_table->symbols->prev;
-  symbol_table->symbols->prev = symbol;
+  Symbol *tail_symbol = symbol_table->symbols->free_prev;
+  symbol_table->symbols->free_prev = symbol;
 
-  symbol->prev = tail_symbol;
-  symbol->next = tail_symbol->next;
-  tail_symbol->next = symbol;
+  symbol->free_prev = tail_symbol;
+  symbol->free_next = tail_symbol->free_next;
+  tail_symbol->free_next = symbol;
 
   if (symbol_table->current_scope->head == NULL) {
     symbol_table->current_scope->head = symbol;
@@ -74,6 +82,15 @@ SymbolTable *add_formal(const char *formal_name, SymbolTable *symbol_table) {
   symbol->name = strdup(formal_name);
   symbol->type = SYM_VARIABLE;
 
+  // Add to the symbol list
+  Symbol *tail_symbol = symbol_table->symbols->free_prev;
+  symbol_table->symbols->free_prev = symbol;
+
+  symbol->free_prev = tail_symbol;
+  symbol->free_next = tail_symbol->free_next;
+  tail_symbol->free_next = symbol;
+
+  // Add to the function symbol
   Symbol *function_symbol = symbol_table->global_scope->tail;
   if (function_symbol == NULL) {
     // TODO
@@ -110,11 +127,25 @@ void push_local_scope(SymbolTable *symbol_table) {
   new_scope->next = symbol_table->scopes;
 
   symbol_table->scopes->prev = new_scope;
-
 }
 
 void pop_local_scope(SymbolTable *symbol_table) {
   symbol_table->current_scope = symbol_table->global_scope;
+}
+
+int is_symbol_in_scope(const Scope *scope, const char *symbol_name,
+                       const SymbolTable *symbol_table) {
+  const Symbol *head = scope->head;
+  const Symbol *symbol = head;
+  int first = 0;
+  while (symbol != NULL && (!first || symbol != head)) {
+    if (strcmp(symbol->name, symbol_name) == 0) {
+      return 1;
+    }
+    symbol = symbol->next;
+    first = 1;
+  }
+  return 0;
 }
 
 Scope *get_global_scope(const SymbolTable *symbol_table) {
@@ -142,16 +173,19 @@ Symbol *find_formal(const Symbol *function_symbol, const char *formal_name) {
 
 void free_symbol_table(SymbolTable *symbol_table) {
   const Symbol *placeholder_symbol = symbol_table->symbols;
-  Symbol *symbol = placeholder_symbol->next;
+  Symbol *symbol = placeholder_symbol->free_next;
   while (symbol != placeholder_symbol) {
-    Symbol *next_symbol = symbol->next;
+    Symbol *next_symbol = symbol->free_next;
 
     if (symbol->name != NULL) {
       free(symbol->name);
     }
+
     symbol->type = SYM_NULL;
     symbol->next = NULL;
     symbol->prev = NULL;
+    symbol->free_prev = NULL;
+    symbol->free_next = NULL;
 
     free(symbol);
     symbol = next_symbol;
