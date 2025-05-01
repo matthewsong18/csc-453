@@ -39,12 +39,15 @@ SymbolTable *allocate_symbol_table(void) {
   symbol_table->scopes = allocate_scope();
   symbol_table->scopes->next = scope;
 
+  // Adding println
+  symbol_table = add_symbol("println", SYM_FUNCTION, symbol_table);
+
   return symbol_table;
 }
 
 SymbolTable *add_symbol(const char *name, const enum SymbolType type,
                         SymbolTable *symbol_table) {
-  if (is_symbol_in_scope(get_current_scope(symbol_table), name, symbol_table)) {
+  if (is_symbol_in_scope(get_current_scope(symbol_table), name)) {
     fprintf(stderr, "ERROR: symbol %s already defined in current scope\n",
             name);
     exit(EXIT_FAILURE);
@@ -133,8 +136,7 @@ void pop_local_scope(SymbolTable *symbol_table) {
   symbol_table->current_scope = symbol_table->global_scope;
 }
 
-int is_symbol_in_scope(const Scope *scope, const char *symbol_name,
-                       const SymbolTable *symbol_table) {
+int is_symbol_in_scope(const Scope *scope, const char *symbol_name) {
   const Symbol *head = scope->head;
   const Symbol *symbol = head;
   int first = 0;

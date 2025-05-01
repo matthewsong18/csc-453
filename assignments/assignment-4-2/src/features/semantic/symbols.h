@@ -46,7 +46,7 @@ void push_local_scope(SymbolTable *symbol_table);
 void pop_local_scope(SymbolTable *symbol_table);
 
 // Finders
-int is_symbol_in_scope(const Scope *scope, const char* symbol_name, const SymbolTable *symbol_table);
+int is_symbol_in_scope(const Scope *scope, const char* symbol_name);
 
 // Getters
 Scope *get_global_scope(const SymbolTable *symbol_table);
