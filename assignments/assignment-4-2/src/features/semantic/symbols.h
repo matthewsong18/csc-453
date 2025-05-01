@@ -21,6 +21,7 @@ typedef struct Symbol {
 typedef struct Scope {
   Symbol *head;
   Symbol *tail;
+  struct Scope *parent;
   struct Scope *next;
   struct Scope *prev;
 } Scope;

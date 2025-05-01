@@ -34,12 +34,16 @@ parse_data *parse_and_exp_prime(parse_data *data);
 parse_data *parse_relational_exp(parse_data *data);
 static parse_data *parse_type(parse_data *data);
 
+int chk_decl_flag;
+int print_ast_flag;
+
 static parse_data *create_parse_data(void) {
   parse_data *data = malloc(sizeof(parse_data));
   if (!data)
     exit(EXIT_FAILURE);
   data->current_token = next_token();
   data->exit_status = 0;
+  data->symbol_table = allocate_symbol_table();
   return data;
 }
 
@@ -110,6 +114,9 @@ parse_data *parse_var_decl_list_tail(parse_data *data) {
           data, "Expected identifier after comma in declaration list");
       return data;
     }
+    if (chk_decl_flag) {
+      add_symbol(data->current_token.lexeme, SYM_VARIABLE, data->symbol_table);
+    }
     update_data_to_next_token(data);
   }
   return data;
@@ -151,6 +158,7 @@ parse_data *parse_formals_list_tail(parse_data *data) {
                           "Expected identifier after type in parameter list");
       return data;
     }
+    add_formal(data->current_token.lexeme, data->symbol_table);
     update_data_to_next_token(data);
   }
   return data;
@@ -165,6 +173,7 @@ parse_data *parse_formals_list(parse_data *data) {
     report_syntax_error(data, "Expected identifier for parameter name");
     return data;
   }
+  add_formal(data->current_token.lexeme, data->symbol_table);
   update_data_to_next_token(data);
   data = parse_formals_list_tail(data);
   return data;
@@ -183,6 +192,7 @@ parse_data *parse_func_defn(parse_data *data) {
     return data;
   }
   update_data_to_next_token(data);
+  push_local_scope(data->symbol_table);
 
   data = parse_opt_formals(data);
   if (bad_exit(data)) {
@@ -209,6 +219,7 @@ parse_data *parse_func_defn(parse_data *data) {
       report_syntax_error(data, "Expected '}' to close function body");
       return data;
     }
+    pop_local_scope(data->symbol_table);
     update_data_to_next_token(data);
   } else if (in_first_set(TOKEN_SEMI, data)) {
     update_data_to_next_token(data);
@@ -229,11 +240,18 @@ parse_data *parse_decl(parse_data *data) {
     report_syntax_error(data, "Expected identifier after type");
     return data;
   }
+  const char *id_name = data->current_token.lexeme;
   update_data_to_next_token(data);
 
   if (in_first_set(TOKEN_LPAREN, data)) {
+    if (chk_decl_flag) {
+      add_symbol(id_name, SYM_FUNCTION, data->symbol_table);
+    }
     data = parse_func_defn(data);
   } else {
+    if (chk_decl_flag) {
+      add_symbol(id_name, SYM_VARIABLE, data->symbol_table);
+    }
     data = parse_decl_prime(data);
   }
   return data;
@@ -265,6 +283,26 @@ parse_data *parse_stmt_list(parse_data *data) {
 
 parse_data *parse_stmt(parse_data *data) {
   if (in_first_set(TOKEN_ID, data)) {
+    if (chk_decl_flag) {
+      const char *id_name = data->current_token.lexeme;
+      const Scope *current_scope = get_current_scope(data->symbol_table);
+      int found = 0;
+      while (current_scope != NULL) {
+        if (is_symbol_in_scope(current_scope, id_name)) {
+          found = 1;
+          break;
+        }
+        current_scope = current_scope->parent;
+      }
+      if (!found) {
+        printf("error");
+        fflush(stdout);
+        report_syntax_error(data, "UNDECLARED VARIABLE");
+        data->exit_status = 1;
+        return data;
+      }
+    }
+
     update_data_to_next_token(data);
     data = parse_stmt_after_id(data);
   } else if (in_first_set(TOKEN_KWIF, data)) {
@@ -274,6 +312,9 @@ parse_data *parse_stmt(parse_data *data) {
   } else if (in_first_set(TOKEN_KWRETURN, data)) {
     data = parse_return_stmt(data);
   } else if (in_first_set(TOKEN_LBRACE, data)) {
+    if (chk_decl_flag) {
+      push_local_scope(data->symbol_table);
+    }
     update_data_to_next_token(data);
     data = parse_opt_var_decls(data);
     if (bad_exit(data)) {
@@ -286,6 +327,9 @@ parse_data *parse_stmt(parse_data *data) {
     if (does_not_match(TOKEN_RBRACE, data->current_token)) {
       report_syntax_error(data, "Expected '}' to close compound statement");
       return data;
+    }
+    if (chk_decl_flag) {
+      pop_local_scope(data->symbol_table);
     }
     update_data_to_next_token(data);
   } else if (in_first_set(TOKEN_SEMI, data)) {
@@ -451,6 +495,16 @@ parse_data *parse_opt_actuals(parse_data *data) {
 
 parse_data *parse_primary_exp(parse_data *data) {
   if (in_first_set(TOKEN_ID, data)) {
+    if (chk_decl_flag) {
+      const char *id_name = data->current_token.lexeme;
+      const Scope *current_scope = get_current_scope(data->symbol_table);
+      const Scope *global_scope = get_global_scope(data->symbol_table);
+      if (!is_symbol_in_scope(current_scope, id_name) &&
+          !is_symbol_in_scope(global_scope, id_name)) {
+        data->exit_status = 1;
+        return data;
+      }
+    }
     update_data_to_next_token(data);
     data = parse_primary_exp_after_id(data);
     if (bad_exit(data)) {
@@ -621,7 +675,6 @@ parse_data *parse_bool_exp(parse_data *data) {
 int parse_prog() {
   parse_data *data = create_parse_data();
   data = parse_decl_list(data);
-  const int original_exit_status = data->exit_status;
   if (!bad_exit(data) && !in_first_set(TOKEN_EOF, data)) {
     report_syntax_error(data, "Unexpected token after end of program");
   }

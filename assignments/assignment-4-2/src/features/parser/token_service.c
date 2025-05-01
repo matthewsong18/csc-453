@@ -5,7 +5,7 @@
 #include <string.h>
 
 extern char *lexeme;
-extern bool DEBUG_ON;
+bool DEBUG_ON = false;
 // Global current token.
 token_data currentToken;
 

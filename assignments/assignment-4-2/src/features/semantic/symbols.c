@@ -1,8 +1,8 @@
 #include "symbols.h"
 #include "../common/safe-memory.h"
 
-#include <_stdio.h>
-#include <_string.h>
+#include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
 Symbol *allocate_symbol(void) {
@@ -23,6 +23,7 @@ Symbol *allocate_symbol(void) {
 Scope *allocate_scope(void) {
   Scope *scope = safe_malloc(sizeof(Scope));
 
+  scope->parent = NULL;
   scope->next = scope;
   scope->prev = scope;
 
@@ -120,6 +121,7 @@ SymbolTable *add_formal(const char *formal_name, SymbolTable *symbol_table) {
 void push_local_scope(SymbolTable *symbol_table) {
   Scope *new_scope = allocate_scope();
 
+  new_scope->parent = symbol_table->current_scope;
   symbol_table->current_scope = new_scope;
 
   Scope *last_scope = symbol_table->scopes->prev;
@@ -133,7 +135,7 @@ void push_local_scope(SymbolTable *symbol_table) {
 }
 
 void pop_local_scope(SymbolTable *symbol_table) {
-  symbol_table->current_scope = symbol_table->global_scope;
+  symbol_table->current_scope = symbol_table->current_scope->parent;
 }
 
 int is_symbol_in_scope(const Scope *scope, const char *symbol_name) {
