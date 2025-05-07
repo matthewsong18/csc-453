@@ -1,0 +1,2 @@
+ERROR: LINE 8 [funcall_args] Incorrect no. of arguments in call:  f
+exit status: 1

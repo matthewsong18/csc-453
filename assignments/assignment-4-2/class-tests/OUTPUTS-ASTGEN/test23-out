@@ -1,0 +1,18 @@
+func_def: f
+  formals: 
+  body:
+    {
+        if (((((x + u) + v) > ((x - u) - v)) || (((x * y) * u) > ((x / u) / v))) || ((x + ((y * u) / v)) > ((x * y) - (u / v)))):
+        then:
+            x = 1
+        else:
+        end_if
+        if (((((x + u) + v) > ((x - u) - v)) && (((x * y) * u) > ((x / u) / v))) && ((x + ((y * u) / v)) > ((x * y) - (u / v)))):
+        then:
+            x = 1
+        else:
+        end_if
+    }
+/* func_def: f */
+
+exit status: 0

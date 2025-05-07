@@ -1,0 +1,32 @@
+func_def: f
+  formals: 
+  body:
+    {
+        if (((x > 0) && (y > 0)) || ((x < 5) && (x != y))):
+        then:
+            x = 1
+        else:
+        end_if
+        while (((x > 0) || ((y > 0) && (x < 5))) || (x != y)):
+            x = 1
+        end_while
+        if (((x > 0) || (y > 0)) || ((x < 5) && (x != y))):
+        then:
+            x = 1
+        else:
+        end_if
+        while ((((x > 0) && (y > 0)) || (x < 5)) || (x != y)):
+            x = 1
+        end_while
+        if ((((x > 0) && (y > 0)) && (x < 5)) || (x != y)):
+        then:
+            x = 1
+        else:
+        end_if
+        while ((x > 0) || (((y > 0) && (x < 5)) && (x != y))):
+            x = 1
+        end_while
+    }
+/* func_def: f */
+
+exit status: 0

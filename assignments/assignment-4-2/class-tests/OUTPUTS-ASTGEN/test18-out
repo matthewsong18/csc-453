@@ -1,0 +1,21 @@
+func_def: f
+  formals: 
+  body:
+    {
+        x = 0
+    }
+/* func_def: f */
+
+func_def: g
+  formals: x
+  body:
+    {
+        g(((g(0) + g(1)) - ((f() * g(1)) / f())))
+        g(((g(0) - ((g(1) * f()) / g(1))) + f()))
+        g(((((g(0) * g(1)) / f()) + g(1)) - f()))
+        g((((g(0) / g(1)) + f()) - (g(1) * f())))
+        g((((-(g(0)) / -(g(1))) + -(f())) - (-(g(1)) * -(f()))))
+    }
+/* func_def: g */
+
+exit status: 0

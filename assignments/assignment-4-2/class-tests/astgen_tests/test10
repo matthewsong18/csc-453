@@ -1,0 +1,38 @@
+/* astgen: precedence of + and - w.r.t. * and / */
+
+int a() {    /* + and * */
+    int x, y, u, v;
+
+    x = x + y * u + v;
+    y = x * y + u * v;
+}
+
+int b() {    /* - and * /
+    int x, y, u, v;
+
+    x = x - y * u - v;
+    y = x * y - u * v;
+}
+
+int c() {    /* + and / */
+    int x, y, u, v;
+
+    x = x + y / u + v;
+    y = x / y + u / v;
+}
+
+int d() {    /* - and / */
+    int x, y, u, v;
+
+    x = x - y / u - v;
+    y = x / y - u / v;
+}
+
+int e() {    /* + and - w.r.t. * and / */
+    int x, y, u, v;
+
+    x = x + 1 * y - 2 / u + 3 * v;
+    x = x * 1 + y / 2 - u * 3 + v;
+    x = x - 1 / y + 2 * u - 3 / v;
+    x = x / 1 - y * 2 + u / 3 - v;
+}

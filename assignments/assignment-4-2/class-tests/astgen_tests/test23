@@ -1,0 +1,13 @@
+/* astgen: associativity and precedence of && and ||
+   in expressions containing arithmetic operators */
+
+int f() {
+    int x, y, u, v;
+
+    if (x+u+v > x-u-v || x*y*u > x/u/v || x+y*u/v > x*y-u/v)
+        x = 1;
+
+    if (x+u+v > x-u-v && x*y*u > x/u/v &&  x+y*u/v > x*y-u/v)
+        x = 1;
+
+}

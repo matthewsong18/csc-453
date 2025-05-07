@@ -1,0 +1,15 @@
+/* astgen: statements involving nested function calls */
+
+int x, y;
+
+int f() {
+    f();
+}
+
+int g(int x) {
+    g(f());
+}
+
+int h(int x, int y, int z) {
+    h(g(x-1), f(), h(0,z*2,f()));
+}

@@ -1,0 +1,14 @@
+/* astgen: associativity of + and - operators individually */
+
+int f() {
+    int x, y, u, v;
+
+    x = x + y + u + v;
+}
+
+int g() {
+    int x, y, u, v;
+
+    x = x - y - u - v;
+}
+

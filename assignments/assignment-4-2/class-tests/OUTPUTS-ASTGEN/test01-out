@@ -1,0 +1,12 @@
+func_def: f
+  formals: 
+  body:
+    {
+        x = (x + 1)
+        x = (x - 1)
+        x = (x * 2)
+        x = (x / 2)
+    }
+/* func_def: f */
+
+exit status: 0

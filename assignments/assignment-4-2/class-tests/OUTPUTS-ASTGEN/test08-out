@@ -1,0 +1,9 @@
+func_def: f
+  formals: 
+  body:
+    {
+        x = -(-(-(-(x))))
+    }
+/* func_def: f */
+
+exit status: 0

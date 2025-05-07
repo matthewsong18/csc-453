@@ -1,0 +1,19 @@
+/* astgen: statements involving function calls and arithmetic operators */
+
+int x, y;
+
+int f() {
+    x = 0;
+}
+
+int g(int x) {
+    g(g(0) + g(1) - f() * g(1) / f());
+    g(g(0) - g(1) * f() / g(1) + f());
+    g(g(0) * g(1) / f() + g(1) - f());
+    g(g(0) / g(1) + f() - g(1) * f());
+
+    g(-g(0) / -g(1) + -f() - -g(1) * -f());
+}
+
+
+    

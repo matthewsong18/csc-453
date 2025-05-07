@@ -1,0 +1,15 @@
+/* astgen: statements involving simple function calls */
+
+int x, y;
+
+int f() {
+    f();
+}
+
+int g(int x) {
+    g(0);
+}
+
+int h(int x, int y, int z) {
+    h(x-1, y+1, z*2);
+}

@@ -1,0 +1,6 @@
+/* astgen: associativity of unary minus with parenthesized subexpressions */
+
+int f() {
+    int x, y, z;
+    x = -(-(-(-(x+y)*z)/(x-y)) + 1);
+}

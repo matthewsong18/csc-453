@@ -1,0 +1,6 @@
+/* astgen: || plus function calls */
+
+int f(int x, int y) {
+    if (f(0,1) > 0 || f(x-1, y+1) == f(x+1, y-1) || 12 < f(f(0,1)+1, f(1,0)-1))
+        x = 0;
+}

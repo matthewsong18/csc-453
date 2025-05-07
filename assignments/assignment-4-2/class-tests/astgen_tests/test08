@@ -1,0 +1,6 @@
+/* astgen: associativity of unary minus */
+
+int f() {
+    int x;
+    x = ----x;
+}

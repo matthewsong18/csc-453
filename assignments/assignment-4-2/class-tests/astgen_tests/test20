@@ -1,0 +1,9 @@
+/* astgen: associativity of && */
+
+int f() {
+    int x, y;
+
+    if (x > 0 && y > 0 && x < 5 && x != y)
+        x = 1;
+
+}

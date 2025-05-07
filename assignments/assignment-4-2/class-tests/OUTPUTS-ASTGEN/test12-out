@@ -1,0 +1,25 @@
+func_def: f
+  formals: 
+  body:
+    {
+        x = f()
+    }
+/* func_def: f */
+
+func_def: g
+  formals: x
+  body:
+    {
+        y = g(f())
+    }
+/* func_def: g */
+
+func_def: h
+  formals: x, y, z
+  body:
+    {
+        x = h(g((x - 1)), f(), h(0, (z * 2), f()))
+    }
+/* func_def: h */
+
+exit status: 0

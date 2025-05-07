@@ -1,0 +1,2 @@
+ERROR: LINE 9 [id_or_funcall] Incorrect use of function:  myfun
+exit status: 1

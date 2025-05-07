@@ -1,0 +1,2 @@
+ERROR: LINE 8 [assg_or_fn_call] Assignment LHS is a function:  myfun
+exit status: 1

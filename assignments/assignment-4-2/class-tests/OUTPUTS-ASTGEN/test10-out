@@ -1,0 +1,39 @@
+func_def: a
+  formals: 
+  body:
+    {
+        x = ((x + (y * u)) + v)
+        y = ((x * y) + (u * v))
+    }
+/* func_def: a */
+
+func_def: b
+  formals: 
+  body:
+    {
+        x = ((x + (y / u)) + v)
+        y = ((x / y) + (u / v))
+    }
+/* func_def: b */
+
+func_def: d
+  formals: 
+  body:
+    {
+        x = ((x - (y / u)) - v)
+        y = ((x / y) - (u / v))
+    }
+/* func_def: d */
+
+func_def: e
+  formals: 
+  body:
+    {
+        x = (((x + (1 * y)) - (2 / u)) + (3 * v))
+        x = ((((x * 1) + (y / 2)) - (u * 3)) + v)
+        x = (((x - (1 / y)) + (2 * u)) - (3 / v))
+        x = ((((x / 1) - (y * 2)) + (u / 3)) - v)
+    }
+/* func_def: e */
+
+exit status: 0

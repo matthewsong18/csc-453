@@ -1,0 +1,24 @@
+/* astgen: associativity and precedence of && and || */
+
+int f() {
+    int x, y;
+
+    if (x > 0 && y > 0 || x < 5 && x != y)
+        x = 1;
+
+    while (x > 0 || y > 0 && x < 5 || x != y)
+        x = 1;
+
+    if (x > 0 || y > 0 || x < 5 && x != y)
+        x = 1;
+
+    while (x > 0 && y > 0 || x < 5 || x != y)
+        x = 1;
+
+    if (x > 0 && y > 0 && x < 5 || x != y)
+        x = 1;
+
+    while (x > 0 || y > 0 && x < 5 && x != y)
+        x = 1;
+
+}
